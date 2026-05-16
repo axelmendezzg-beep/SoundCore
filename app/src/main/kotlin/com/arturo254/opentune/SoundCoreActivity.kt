@@ -16,6 +16,7 @@ import com.arturo254.opentune.playback.MusicService
 import com.arturo254.opentune.playback.MusicService.MusicBinder
 import com.arturo254.opentune.playback.PlayerConnection
 import com.arturo254.opentune.playback.queues.YouTubeQueue
+import com.arturo254.opentune.innertube.models.WatchEndpoint
 import com.arturo254.opentune.db.MusicDatabase
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.CoroutineScope
@@ -32,12 +33,10 @@ class SoundCoreActivity : ComponentActivity() {
     private var playerConnection: PlayerConnection? = null
     private var isMusicServiceBound = false
 
-    // El cable invisible que se amarra al reproductor nativo de la app
     private val serviceConnection = object : ServiceConnection {
         override fun onServiceConnected(name: ComponentName?, service: IBinder?) {
             isMusicServiceBound = true
             if (service is MusicBinder) {
-                // Clonamos el amarre exacto que hace Arturo con la base de datos y el ciclo de vida
                 playerConnection = PlayerConnection(this@SoundCoreActivity, service, database, CoroutineScope(Dispatchers.Main))
                 runOnUiThread {
                     Toast.makeText(this@SoundCoreActivity, "¡Motor de Audio Vinculado! 🏎️", Toast.LENGTH_SHORT).show()
@@ -62,11 +61,9 @@ class SoundCoreActivity : ComponentActivity() {
         webView.settings.domStorageEnabled = true
         webView.webViewClient = WebViewClient()
 
-        // Registramos el puente con el nuevo método
         webView.addJavascriptInterface(SoundCoreBridge(), "SoundCoreBridge")
         webView.loadUrl("file:///android_asset/index.html")
 
-        // Arrancamos y vinculamos el servicio de música nativo en chinga
         bindService(Intent(this, MusicService::class.java), serviceConnection, Context.BIND_AUTO_CREATE)
     }
 
@@ -79,15 +76,18 @@ class SoundCoreActivity : ComponentActivity() {
         super.onDestroy()
     }
 
-    // El puente que recibe los gritos de tu HTML
     inner class SoundCoreBridge {
         @JavascriptInterface
         fun playTrack(videoId: String) {
             runOnUiThread {
                 if (playerConnection != null) {
                     Toast.makeText(this@SoundCoreActivity, "Inyectando a NewPipe: $videoId", Toast.LENGTH_SHORT).show()
-                    // ¡LA LLAVE MAESTRA! Le metemos el ID a la cola nativa de Arturo
-                    playerConnection?.playQueue(YouTubeQueue(videoId))
+                    
+                    // Convertimos el String a un WatchEndpoint real con el ID del video y playlist nula
+                    val endpoint = WatchEndpoint(videoId = videoId, playlistId = null)
+                    
+                    // Ahora sí, le pasamos el objeto exacto que el motor quiere masticar
+                    playerConnection?.playQueue(YouTubeQueue(endpoint))
                 } else {
                     Toast.makeText(this@SoundCoreActivity, "Error: Motor de audio desconectado", Toast.LENGTH_LONG).show()
                 }
