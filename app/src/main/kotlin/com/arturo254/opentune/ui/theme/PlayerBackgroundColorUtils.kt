@@ -26,6 +26,7 @@ object PlayerBackgroundColorUtils {
         minSaturation: Float = DEFAULT_MIN_SATURATION
     ): Color {
         val hsv = color.toHsv()
+        if (color.toArgb() == 0xFF000000.toInt()) return color
         hsv[1] = hsv[1].coerceAtLeast(minSaturation)
         hsv[2] = hsv[2].coerceIn(minBrightness, maxBrightness)
         return hsv.toColor()
@@ -33,6 +34,7 @@ object PlayerBackgroundColorUtils {
 
     fun darkenColor(color: Color, factor: Float): Color {
         val hsv = color.toHsv()
+        if (color.toArgb() == 0xFF000000.toInt()) return color
         hsv[2] = (hsv[2] * factor).coerceAtLeast(0f)
         return hsv.toColor()
     }
