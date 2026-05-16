@@ -6,14 +6,11 @@ import android.webkit.JavascriptInterface
 import android.webkit.WebView
 import android.webkit.WebViewClient
 import android.widget.Toast
-import androidx.activity.ComponentActivity
+import androidx.appcompat.app.AppCompatActivity
 import dagger.hilt.android.AndroidEntryPoint
-import javax.inject.Inject
-import com.arturo254.opentune.db.MusicDatabase
-import com.arturo254.opentune.playback.PlayerConnection
 
 @AndroidEntryPoint
-class SoundCoreActivity : ComponentActivity() {
+class SoundCoreActivity : AppCompatActivity() {
 
     private lateinit var webView: WebView
 
@@ -44,9 +41,6 @@ class SoundCoreActivity : ComponentActivity() {
             // Este grito viene desde el HTML
             runOnUiThread {
                 Toast.makeText(this@SoundCoreActivity, "Conectado al motor! ID: $videoId", Toast.LENGTH_LONG).show()
-                
-                // AQUÍ es donde en el siguiente paso llamaremos al playerConnection
-                // de Arturo para que NewPipe extraiga el audio y suene al tiro.
             }
         }
     }
