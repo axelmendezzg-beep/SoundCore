@@ -1,5 +1,5 @@
 /*
- * OpenTune Project Original (2026)
+ * SoundCore Project Original (2026)
  * Arturo254 (github.com/Arturo254)
  * Licensed Under GPL-3.0 | see git history for contributors
  */
@@ -118,7 +118,7 @@ fun UpdateScreen(
     val coroutineScope = rememberCoroutineScope()
 
     var nightlyInstallUrl by remember {
-        mutableStateOf("https://github.com/Arturo254/OpenTune/releases/download/latest/app-universal-release.apk")
+        mutableStateOf("https://github.com/Arturo254/SoundCore/releases/download/latest/app-universal-release.apk")
     }
 
     val (enableUpdateNotification, onEnableUpdateNotificationChange) = rememberPreference(
@@ -231,7 +231,7 @@ fun UpdateScreen(
                 }
             }
         } else {
-            nightlyInstallUrl = "https://github.com/Arturo254/OpenTune/releases/download/latest/app-universal-release.apk"
+            nightlyInstallUrl = "https://github.com/Arturo254/SoundCore/releases/download/latest/app-universal-release.apk"
         }
     }
 
@@ -601,7 +601,7 @@ private fun BuildChannelInfoDialog(
         title = { Text(title) },
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(12.dp), modifier = Modifier.fillMaxWidth()) {
-                Text("OpenTune provides two download channels for builds:", style = MaterialTheme.typography.bodyMedium)
+                Text("SoundCore provides two download channels for builds:", style = MaterialTheme.typography.bodyMedium)
                 Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
                     Text("• Stable builds", style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.SemiBold)
                     Text("Distributed via official GitHub Releases.", style = MaterialTheme.typography.bodySmall)

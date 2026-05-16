@@ -1,5 +1,5 @@
 /*
- * OpenTune Project Original (2026)
+ * SoundCore Project Original (2026)
  * Arturo254 (github.com/Arturo254)
  * Licensed Under GPL-3.0 | see git history for contributors
  */
@@ -85,7 +85,7 @@ import com.arturo254.opentune.constants.SwipeThumbnailKey
 import com.arturo254.opentune.constants.SwipeSensitivityKey
 import com.arturo254.opentune.constants.SwipeToSongKey
 import com.arturo254.opentune.constants.HidePlayerThumbnailKey
-import com.arturo254.opentune.constants.OpenTuneCanvasKey
+import com.arturo254.opentune.constants.SoundCoreCanvasKey
 import com.arturo254.opentune.constants.ThumbnailCornerRadiusKey
 import com.arturo254.opentune.constants.CropThumbnailToSquareKey
 import com.arturo254.opentune.constants.DisableBlurKey
@@ -140,8 +140,8 @@ fun AppearanceSettings(
         HidePlayerThumbnailKey,
         defaultValue = false
     )
-    val (OpenTuneCanvasEnabled, onOpenTuneCanvasEnabledChange) = rememberPreference(
-        OpenTuneCanvasKey,
+    val (SoundCoreCanvasEnabled, onSoundCoreCanvasEnabledChange) = rememberPreference(
+        SoundCoreCanvasKey,
         defaultValue = false
     )
     val (thumbnailCornerRadius, onThumbnailCornerRadiusChange) = rememberPreference(
@@ -456,11 +456,11 @@ fun AppearanceSettings(
         )
 
         SwitchPreference(
-            title = { Text(stringResource(R.string.OpenTune_canvas)) },
-            description = stringResource(R.string.OpenTune_canvas_desc),
+            title = { Text(stringResource(R.string.SoundCore_canvas)) },
+            description = stringResource(R.string.SoundCore_canvas_desc),
             icon = { Icon(painterResource(R.drawable.motion_photos_on), null) },
-            checked = OpenTuneCanvasEnabled,
-            onCheckedChange = onOpenTuneCanvasEnabledChange
+            checked = SoundCoreCanvasEnabled,
+            onCheckedChange = onSoundCoreCanvasEnabledChange
         )
       
 

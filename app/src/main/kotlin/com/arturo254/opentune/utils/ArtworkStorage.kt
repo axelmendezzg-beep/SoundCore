@@ -1,5 +1,5 @@
 /*
- * OpenTune Project Original (2026)
+ * SoundCore Project Original (2026)
  * Arturo254 (github.com/Arturo254)
  * Licensed Under GPL-3.0 | see git history for contributors
  */
@@ -23,7 +23,7 @@ data class SavedArtwork(
 )
 
 object ArtworkStorage {
-    private const val FILENAME = "OpenTune_saved_artworks.json"
+    private const val FILENAME = "SoundCore_saved_artworks.json"
     private val json = Json { prettyPrint = true; ignoreUnknownKeys = true }
 
     private fun fileFor(context: Context): File = File(context.filesDir, FILENAME)

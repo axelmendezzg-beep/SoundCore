@@ -1,5 +1,5 @@
 /*
- * OpenTune Project Original (2026)
+ * SoundCore Project Original (2026)
  * Arturo254 (github.com/Arturo254)
  * Licensed Under GPL-3.0 | see git history for contributors
  */
@@ -255,7 +255,7 @@ fun buildSettingsGroups(
                         SettingsItem(
                             icon = painterResource(R.drawable.info),
                             title = stringResource(R.string.about),
-                            subtitle = "OpenTune",
+                            subtitle = "SoundCore",
                             accentColor = MaterialTheme.colorScheme.onSurfaceVariant,
                             keywords = listOf("about", "app info", "license", "contributors"),
                             onClick = { resetSearch(); navController.navigate("settings/about") },

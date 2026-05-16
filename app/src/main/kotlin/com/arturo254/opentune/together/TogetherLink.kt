@@ -1,5 +1,5 @@
 /*
- * OpenTune Project Original (2026)
+ * SoundCore Project Original (2026)
  * Arturo254 (github.com/Arturo254)
  * Licensed Under GPL-3.0 | see git history for contributors
  */
@@ -31,7 +31,7 @@ data class TogetherJoinInfo(
             ).joinToString("&") { (k, v) ->
                 "${URLEncoder.encode(k, charset)}=${URLEncoder.encode(v, charset)}"
             }
-        return "OpenTune://together?$q"
+        return "SoundCore://together?$q"
     }
 }
 
@@ -53,7 +53,7 @@ object TogetherLink {
     }
 
     private fun decodeDeepLink(uri: URI): TogetherJoinInfo? {
-        if (!uri.scheme.equals("OpenTune", ignoreCase = true)) return null
+        if (!uri.scheme.equals("SoundCore", ignoreCase = true)) return null
         val authority = uri.host?.lowercase() ?: uri.authority?.lowercase() ?: return null
         if (authority != "together") return null
 

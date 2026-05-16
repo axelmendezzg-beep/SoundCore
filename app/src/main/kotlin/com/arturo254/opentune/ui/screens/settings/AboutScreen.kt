@@ -1,5 +1,5 @@
 /*
- * OpenTune Project Original (2026)
+ * SoundCore Project Original (2026)
  * Arturo254 (github.com/Arturo254)
  * Licensed Under GPL-3.0 | see git history for contributors
  */
@@ -209,10 +209,10 @@ fun AboutScreen(
             item {
                 SocialCard(
                     links = listOf(
-                        SocialLink(R.drawable.github,    "https://github.com/Arturo254/OpenTune",        "GitHub"),
+                        SocialLink(R.drawable.github,    "https://github.com/Arturo254/SoundCore",        "GitHub"),
                         SocialLink(R.drawable.telegram,    "https://t.me/opentune_updates",               "Telegram"),
                         SocialLink(R.drawable.facebook,  "https://www.facebook.com/Arturo254",            "Facebook"),
-                        SocialLink(R.drawable.paypal,    "https://www.paypal.me/OpenTune",                "PayPal"),
+                        SocialLink(R.drawable.paypal,    "https://www.paypal.me/SoundCore",                "PayPal"),
                         SocialLink(R.drawable.instagram, "https://www.instagram.com/arturocg.dev/",       "Instagram"),
                         SocialLink(R.drawable.resource_public, "https://opentune.netlify.app/",           "Web"),
                     ),
@@ -286,7 +286,7 @@ fun AboutScreen(
             item {
                 LicenseFooter(
                     onLicenseClick = {
-                        uriHandler.openUri("https://github.com/Arturo254/OpenTune/blob/master/LICENSE")
+                        uriHandler.openUri("https://github.com/Arturo254/SoundCore/blob/master/LICENSE")
                     }
                 )
             }

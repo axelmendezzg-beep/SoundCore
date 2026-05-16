@@ -1,5 +1,5 @@
 /*
- * OpenTune Project Original (2026)
+ * SoundCore Project Original (2026)
  * Arturo254 (github.com/Arturo254)
  * Licensed Under GPL-3.0 | see git history for contributors
  */
@@ -54,7 +54,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.foundation.shape.RoundedCornerShape
 import com.arturo254.opentune.MainActivity
-import com.arturo254.opentune.ui.theme.OpenTuneTheme
+import com.arturo254.opentune.ui.theme.SoundCoreTheme
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
@@ -76,7 +76,7 @@ class DebugActivity : ComponentActivity() {
         val deviceInfo = buildDeviceInfo(this)
 
         setContent {
-            OpenTuneTheme {
+            SoundCoreTheme {
                 CrashReportScreen(
                     previewText = previewText,
                     timestampText = timestampText,
@@ -366,7 +366,7 @@ private fun buildCrashReport(
     }.getOrDefault("")
 
     val header = buildString {
-        appendLine("OpenTune crash report")
+        appendLine("SoundCore crash report")
         if (timestampText.isNotBlank()) appendLine("Time: $timestampText")
         if (versionName.isNotBlank() || versionCode.isNotBlank()) {
             appendLine("App: $versionName ($versionCode)")

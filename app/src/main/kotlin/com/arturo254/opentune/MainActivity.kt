@@ -1,5 +1,5 @@
 /*
- * OpenTune Project Original (2026)
+ * SoundCore Project Original (2026)
  * Arturo254 (github.com/Arturo254)
  * Licensed Under GPL-3.0 | see git history for contributors
  */
@@ -232,7 +232,7 @@ import com.arturo254.opentune.ui.screens.settings.DarkMode
 import com.arturo254.opentune.ui.screens.settings.DiscordPresenceManager
 import com.arturo254.opentune.ui.screens.settings.NavigationTab
 import com.arturo254.opentune.ui.screens.settings.ThemePalettes
-import com.arturo254.opentune.ui.theme.OpenTuneTheme
+import com.arturo254.opentune.ui.theme.SoundCoreTheme
 import com.arturo254.opentune.ui.theme.ColorSaver
 import com.arturo254.opentune.ui.theme.DefaultThemeColor
 import com.arturo254.opentune.ui.theme.ThemeSeedPalette
@@ -636,7 +636,7 @@ class MainActivity : ComponentActivity() {
                 }
             }
 
-            OpenTuneTheme(
+            SoundCoreTheme(
                 darkTheme = useDarkTheme,
                 pureBlack = pureBlack,
                 themeColor = themeColor,
@@ -1725,14 +1725,14 @@ class MainActivity : ComponentActivity() {
         val coroutineScope = lifecycleScope
 
         val authority = uri.authority?.lowercase()
-        if (uri.scheme.equals("OpenTune", ignoreCase = true) && authority == "together") {
+        if (uri.scheme.equals("SoundCore", ignoreCase = true) && authority == "together") {
             pendingTogetherJoinLink = uri.toString()
             startMusicServiceSafely()
             joinPendingTogetherIfReady()
             return
         }
 
-        if (uri.scheme.equals("OpenTune", ignoreCase = true) && authority == "login") {
+        if (uri.scheme.equals("SoundCore", ignoreCase = true) && authority == "login") {
             navController.navigate(buildLoginRoute(uri.getQueryParameter(LOGIN_URL_ARGUMENT)))
             return
         }

@@ -1,5 +1,5 @@
 /*
- * OpenTune Project Original (2026)
+ * SoundCore Project Original (2026)
  * Arturo254 (github.com/Arturo254)
  * Licensed Under GPL-3.0 | see git history for contributors
  */
@@ -179,7 +179,7 @@ object DiscordImageResolver {
                     ?: song.artists.firstOrNull()?.thumbnailUrl?.takeIf { it.isValidHttpUrl() }?.let { RpcImage.ExternalImage(it) }
             }
             "appicon" -> {
-                RpcImage.ExternalImage("https://raw.githubusercontent.com/Arturo254/OpenTune/refs/heads/master/assets/icon.png")
+                RpcImage.ExternalImage("https://raw.githubusercontent.com/Arturo254/SoundCore/refs/heads/master/assets/icon.png")
             }
             "custom" -> {
                 val url = customUrl?.takeIf { it.isNotBlank() && it.isValidHttpUrl() }

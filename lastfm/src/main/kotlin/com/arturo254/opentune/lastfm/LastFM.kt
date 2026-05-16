@@ -1,5 +1,5 @@
 /*
- * OpenTune Project Original (2026)
+ * SoundCore Project Original (2026)
  * Arturo254 (github.com/Arturo254)
  * Licensed Under GPL-3.0 | see git history for contributors
  */
@@ -58,7 +58,7 @@ object LastFM {
         format: String = "json"
     ) {
         contentType(ContentType.Application.FormUrlEncoded)
-        userAgent("OpenTune (https://github.com/Arturo254/OpenTune)")
+        userAgent("SoundCore (https://github.com/Arturo254/SoundCore)")
         val paramsForSig = mutableMapOf(
             "method" to method,
             "api_key" to apiKey

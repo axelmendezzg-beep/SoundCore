@@ -1,5 +1,5 @@
 /*
- * OpenTune Insight — Year in Music, redesigned (2026)
+ * SoundCore Insight — Year in Music, redesigned (2026)
  * Arturo254 (github.com/Arturo254)
  * Licensed Under GPL-3.0 | see git history for contributors
  */
@@ -350,7 +350,7 @@ fun YearInMusicScreen(
                     // Brand label — centered
                     Column(horizontalAlignment = Alignment.CenterHorizontally) {
                         Text(
-                            text       = "OpenTune",
+                            text       = "SoundCore",
                             style      = MaterialTheme.typography.labelSmall,
                             fontWeight = FontWeight.Bold,
                             color      = SnowDim,
@@ -398,7 +398,7 @@ fun YearInMusicScreen(
                                 } else raw
                                 val fitted = ComposeToImage.fitBitmap(cropped, 1080, 1920, shareArgb)
                                 val uri    = ComposeToImage.saveBitmapAsFile(
-                                    context, fitted, "OpenTune_Insight_$selectedYear"
+                                    context, fitted, "SoundCore_Insight_$selectedYear"
                                 )
                                 context.startActivity(
                                     Intent.createChooser(
@@ -1436,7 +1436,7 @@ private fun SummaryPage(
 
             // Header
             Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                // OpenTune branding row
+                // SoundCore branding row
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.spacedBy(10.dp),
@@ -1456,7 +1456,7 @@ private fun SummaryPage(
                     }
                     Column {
                         Text(
-                            "OpenTune Insight",
+                            "SoundCore Insight",
                             style = MaterialTheme.typography.labelLarge,
                             fontWeight = FontWeight.Bold,
                             color = Snow,
@@ -1563,12 +1563,12 @@ private fun SummaryPage(
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 Text(
-                    joinByBullet("OpenTune", year.toString()),
+                    joinByBullet("SoundCore", year.toString()),
                     style = MaterialTheme.typography.labelSmall,
                     color = SnowDim,
                 )
                 Text(
-                    "OpenTune Insight",
+                    "SoundCore Insight",
                     style = MaterialTheme.typography.labelSmall,
                     color = SnowDim,
                 )

@@ -1,5 +1,5 @@
 /*
- * OpenTune Project Original (2026)
+ * SoundCore Project Original (2026)
  * Arturo254 (github.com/Arturo254)
  * Licensed Under GPL-3.0 | see git history for contributors
  */
@@ -53,7 +53,7 @@ data class ThemeSeedPalette(
 
 @OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
-fun OpenTuneTheme(
+fun SoundCoreTheme(
     darkTheme: Boolean = isSystemInDarkTheme(),
     pureBlack: Boolean = false,
     themeColor: Color = DefaultThemeColor,

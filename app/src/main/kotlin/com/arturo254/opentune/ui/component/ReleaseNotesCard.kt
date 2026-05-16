@@ -1,5 +1,5 @@
 /*
- * OpenTune Project Original (2026)
+ * SoundCore Project Original (2026)
  * Arturo254 (github.com/Arturo254)
  * Licensed Under GPL-3.0 | see git history for contributors
  */
@@ -73,7 +73,7 @@ suspend fun fetchReleaseNotesText(): List<String> {
     return withContext(Dispatchers.IO) {
         try {
             val document =
-                Jsoup.connect("https://github.com/Arturo254/OpenTune/releases/latest").get()
+                Jsoup.connect("https://github.com/Arturo254/SoundCore/releases/latest").get()
             val changelogElement = document.selectFirst(".markdown-body")
             val htmlContent = changelogElement?.html() ?: "No release notes found"
 

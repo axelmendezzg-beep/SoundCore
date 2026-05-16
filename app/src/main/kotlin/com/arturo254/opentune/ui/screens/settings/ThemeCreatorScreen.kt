@@ -1,5 +1,5 @@
 /*
- * OpenTune Project Original (2026)
+ * SoundCore Project Original (2026)
  * Arturo254 (github.com/Arturo254)
  * Licensed Under GPL-3.0 | see git history for contributors
  */
@@ -107,7 +107,7 @@ import com.arturo254.opentune.R
 import com.arturo254.opentune.constants.CustomThemeColorKey
 import com.arturo254.opentune.constants.DynamicThemeKey
 import com.arturo254.opentune.ui.component.IconButton
-import com.arturo254.opentune.ui.theme.OpenTuneTheme
+import com.arturo254.opentune.ui.theme.SoundCoreTheme
 import com.arturo254.opentune.ui.theme.ColorSaver
 import com.arturo254.opentune.ui.theme.ThemeSeedPalette
 import com.arturo254.opentune.ui.theme.ThemeSeedPaletteCodec
@@ -286,7 +286,7 @@ fun ThemeCreatorScreen(
                     onClick = {
                         val safeName = themeName
                             .trim()
-                            .ifBlank { "OpenTune Theme" }
+                            .ifBlank { "SoundCore Theme" }
                             .replace(Regex("[^a-zA-Z0-9 _\\-]"), "_")
                             .take(64)
                         exportLauncher.launch("$safeName.json")
@@ -404,7 +404,7 @@ private fun ThemeHeroPreview(
     val animatedTertiary by animateColorAsState(palette.tertiary, animationSpec = spring(stiffness = Spring.StiffnessMediumLow), label = "previewTertiary")
     val animatedNeutral by animateColorAsState(palette.neutral, animationSpec = spring(stiffness = Spring.StiffnessMediumLow), label = "previewNeutral")
 
-    OpenTuneTheme(
+    SoundCoreTheme(
         darkTheme = isDark,
         seedPalette = ThemeSeedPalette(animatedPrimary, animatedSecondary, animatedTertiary, animatedNeutral),
     ) {
@@ -612,7 +612,7 @@ private fun ThemeRichPreview(
     val animatedTertiary by animateColorAsState(palette.tertiary, animationSpec = spring(stiffness = Spring.StiffnessMediumLow), label = "richPreviewTertiary")
     val animatedNeutral by animateColorAsState(palette.neutral, animationSpec = spring(stiffness = Spring.StiffnessMediumLow), label = "richPreviewNeutral")
 
-    OpenTuneTheme(
+    SoundCoreTheme(
         darkTheme = isDark,
         seedPalette = ThemeSeedPalette(animatedPrimary, animatedSecondary, animatedTertiary, animatedNeutral),
     ) {
@@ -625,7 +625,7 @@ private fun ThemeRichPreview(
         var checkboxOn by rememberSaveable { mutableStateOf(true) }
         var radioSelected by rememberSaveable { mutableStateOf(0) }
         var sliderValue by rememberSaveable { mutableStateOf(0.62f) }
-        var query by rememberSaveable { mutableStateOf("OpenTune") }
+        var query by rememberSaveable { mutableStateOf("SoundCore") }
 
         Card(
             modifier = modifier

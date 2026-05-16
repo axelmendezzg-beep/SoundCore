@@ -1,5 +1,5 @@
 /*
- * OpenTune Project Original (2026)
+ * SoundCore Project Original (2026)
  * Arturo254 (github.com/Arturo254)
  * Licensed Under GPL-3.0 | see git history for contributors
  */
@@ -401,7 +401,7 @@ class BackupRestoreViewModel @Inject constructor(
         val serializer = android.util.Xml.newSerializer()
         serializer.setOutput(outputStream, "UTF-8")
         serializer.startDocument("UTF-8", true)
-        serializer.startTag(null, "OpenTuneBackup")
+        serializer.startTag(null, "SoundCoreBackup")
         serializer.startTag(null, "Settings")
 
         for ((key, value) in prefs) {
@@ -431,7 +431,7 @@ class BackupRestoreViewModel @Inject constructor(
         }
 
         serializer.endTag(null, "Settings")
-        serializer.endTag(null, "OpenTuneBackup")
+        serializer.endTag(null, "SoundCoreBackup")
         serializer.endDocument()
         serializer.flush()
     }

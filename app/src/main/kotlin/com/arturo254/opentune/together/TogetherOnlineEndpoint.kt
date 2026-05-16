@@ -1,5 +1,5 @@
 /*
- * OpenTune Project Original (2026)
+ * SoundCore Project Original (2026)
  * Arturo254 (github.com/Arturo254)
  * Licensed Under GPL-3.0 | see git history for contributors
  */
@@ -21,7 +21,7 @@ import com.arturo254.opentune.utils.getAsync
 
 object TogetherOnlineEndpoint {
     private const val EndpointSourceUrl =
-        "https://raw.githubusercontent.com/Arturo254/OpenTune/refs/heads/master/OpenTuneServer.txt"
+        "https://raw.githubusercontent.com/Arturo254/SoundCore/refs/heads/master/SoundCoreServer.txt"
 
     private const val CacheTtlMs: Long = 6 * 60 * 60 * 1000L
 

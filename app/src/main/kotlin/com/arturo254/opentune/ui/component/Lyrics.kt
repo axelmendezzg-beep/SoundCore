@@ -1,5 +1,5 @@
 /*
- * OpenTune Project Original (2026)
+ * SoundCore Project Original (2026)
  * Arturo254 (github.com/Arturo254)
  * Licensed Under GPL-3.0 | see git history for contributors
  */
@@ -2542,10 +2542,10 @@ fun Lyrics(
     }
 }
 
-private const val OpenTune_AUTO_SCROLL_DURATION = 1500L
-private const val OpenTune_INITIAL_SCROLL_DURATION = 1000L
-private const val OpenTune_SEEK_DURATION = 800L
-private const val OpenTune_FAST_SEEK_DURATION = 600L
+private const val SoundCore_AUTO_SCROLL_DURATION = 1500L
+private const val SoundCore_INITIAL_SCROLL_DURATION = 1000L
+private const val SoundCore_SEEK_DURATION = 800L
+private const val SoundCore_FAST_SEEK_DURATION = 600L
 
 private const val LyricsWordSyncLeadMs = 300L
 

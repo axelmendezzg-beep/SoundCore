@@ -1,5 +1,5 @@
 /*
- * OpenTune Project Original (2026)
+ * SoundCore Project Original (2026)
  * Arturo254 (github.com/Arturo254)
  * Licensed Under GPL-3.0 | see git history for contributors
  */
@@ -370,7 +370,7 @@ class MusicService :
         if (lastPrompt?.first == mediaId && now - lastPrompt.second < 10000L) return
         lastLoginRecoveryPrompt = mediaId to now
 
-        val deepLink = Uri.parse("OpenTune://login?url=${Uri.encode(targetUrl)}")
+        val deepLink = Uri.parse("SoundCore://login?url=${Uri.encode(targetUrl)}")
         val intent = Intent(Intent.ACTION_VIEW, deepLink, this, MainActivity::class.java).apply {
             addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
             addFlags(Intent.FLAG_ACTIVITY_SINGLE_TOP)
@@ -655,7 +655,7 @@ class MusicService :
 
         audioManager = getSystemService(Context.AUDIO_SERVICE) as AudioManager
         wakeLock = (getSystemService(Context.POWER_SERVICE) as PowerManager)
-            .newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, "OpenTune:Playback")
+            .newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, "SoundCore:Playback")
             .also { it.setReferenceCounted(false) }
         setupAudioFocusRequest()
 

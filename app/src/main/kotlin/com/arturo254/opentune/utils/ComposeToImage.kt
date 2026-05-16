@@ -1,5 +1,5 @@
 /*
- * OpenTune Project Original (2026)
+ * SoundCore Project Original (2026)
  * Arturo254 (github.com/Arturo254)
  * Licensed Under GPL-3.0 | see git history for contributors
  */
@@ -358,7 +358,7 @@ object ComposeToImage {
     }
 
     // ─────────────────────────────────────────────────────────────────────────
-    // Helper: branding OpenTune (igual al original)
+    // Helper: branding SoundCore (igual al original)
     // ─────────────────────────────────────────────────────────────────────────
 
     private fun drawBranding(
@@ -1057,7 +1057,7 @@ object ComposeToImage {
             val contentValues = ContentValues().apply {
                 put(MediaStore.MediaColumns.DISPLAY_NAME, "$fileName.png")
                 put(MediaStore.MediaColumns.MIME_TYPE, "image/png")
-                put(MediaStore.MediaColumns.RELATIVE_PATH, Environment.DIRECTORY_PICTURES + "/OpenTune")
+                put(MediaStore.MediaColumns.RELATIVE_PATH, Environment.DIRECTORY_PICTURES + "/SoundCore")
             }
             val uri = context.contentResolver.insert(
                 MediaStore.Images.Media.EXTERNAL_CONTENT_URI, contentValues

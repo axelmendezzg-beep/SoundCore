@@ -60,7 +60,7 @@ class UpdaterSemVerTest {
     @Test
     fun isSameVersion_matchesSemverRegardlessOfPrefixOrText() {
         assertTrue(Updater.isSameVersion("v13.0.0", "13.0.0"))
-        assertTrue(Updater.isSameVersion("OpenTune 13.0.0", "13.0.0"))
+        assertTrue(Updater.isSameVersion("SoundCore 13.0.0", "13.0.0"))
         assertFalse(Updater.isSameVersion("13.0.1", "13.0.0"))
     }
 }

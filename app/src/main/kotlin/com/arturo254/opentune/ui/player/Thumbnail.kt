@@ -1,5 +1,5 @@
 /*
- * OpenTune Project Original (2026)
+ * SoundCore Project Original (2026)
  * Arturo254 (github.com/Arturo254)
  * Licensed Under GPL-3.0 | see git history for contributors
  */
@@ -87,14 +87,14 @@ import coil3.compose.AsyncImage
 import androidx.compose.material3.Icon
 import com.arturo254.opentune.LocalPlayerConnection
 import com.arturo254.opentune.R
-import com.arturo254.opentune.canvas.OpenTuneCanvas
+import com.arturo254.opentune.canvas.SoundCoreCanvas
 import com.arturo254.opentune.canvas.CanvasArtwork
 import com.arturo254.opentune.constants.PlayerBackgroundStyle
 import com.arturo254.opentune.constants.PlayerBackgroundStyleKey
 import com.arturo254.opentune.constants.PlayerHorizontalPadding
 import com.arturo254.opentune.constants.SeekExtraSeconds
 import com.arturo254.opentune.constants.SwipeThumbnailKey
-import com.arturo254.opentune.constants.OpenTuneCanvasKey
+import com.arturo254.opentune.constants.SoundCoreCanvasKey
 import com.arturo254.opentune.constants.MaxCanvasCacheSizeKey
 import com.arturo254.opentune.constants.ThumbnailCornerRadiusKey
 import com.arturo254.opentune.constants.CropThumbnailToSquareKey
@@ -271,7 +271,7 @@ fun Thumbnail(
 
     val swipeThumbnail by rememberPreference(SwipeThumbnailKey, true)
     val hidePlayerThumbnail by rememberPreference(HidePlayerThumbnailKey, false)
-    val OpenTuneCanvasEnabled by rememberPreference(OpenTuneCanvasKey, false)
+    val SoundCoreCanvasEnabled by rememberPreference(SoundCoreCanvasKey, false)
     val (maxCanvasCacheSize, _) = rememberPreference(
         key = MaxCanvasCacheSizeKey,
         defaultValue = 256,
@@ -499,7 +499,7 @@ fun Thumbnail(
                                     if (country.length == 2) country.lowercase(Locale.ROOT) else "us"
                                 }
                             val shouldAnimateCanvas =
-                                OpenTuneCanvasEnabled &&
+                                SoundCoreCanvasEnabled &&
                                     item.mediaId.isNotBlank() &&
                                     item.mediaId == currentMediaItem?.mediaId
                             var canvasArtwork by remember(item.mediaId) { mutableStateOf<CanvasArtwork?>(null) }
@@ -556,7 +556,7 @@ fun Thumbnail(
                                             }
 
                                         candidates.firstNotNullOfOrNull { (song, artist) ->
-                                            OpenTuneCanvas
+                                            SoundCoreCanvas
                                                 .getBySongArtist(
                                                     song = song,
                                                     artist = artist,
