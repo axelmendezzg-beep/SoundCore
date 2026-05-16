@@ -445,20 +445,6 @@ class MainActivity : ComponentActivity() {
         }
 
         setContent {
-            android.webkit.WebView(this).apply {
-                settings.javaScriptEnabled = true
-                settings.domStorageEnabled = true
-                webViewClient = android.webkit.WebViewClient()
-                addJavascriptInterface(object {
-                    @android.webkit.JavascriptInterface
-                    fun playTrack(id: String) {
-                        runOnUiThread { android.widget.Toast.makeText(this@MainActivity, "Motor SoundCore: " + id, android.widget.Toast.LENGTH_SHORT).show() }
-                    }
-                }, "SoundCoreBridge")
-                loadUrl("file:///android_asset/index.html")
-                setContentView(this)
-            }
-            if(false)
             val notificationPermissionLauncher =
                 rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { isGranted ->
                     if (isGranted) {
