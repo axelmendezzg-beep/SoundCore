@@ -17,6 +17,7 @@ import com.arturo254.opentune.playback.MusicService.MusicBinder
 import com.arturo254.opentune.playback.PlayerConnection
 import com.arturo254.opentune.playback.queues.YouTubeQueue
 import com.arturo254.opentune.innertube.models.WatchEndpoint
+import com.arturo254.opentune.innertube.YouTube
 import com.arturo254.opentune.db.MusicDatabase
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.CoroutineScope
@@ -32,6 +33,7 @@ class SoundCoreActivity : ComponentActivity() {
     private lateinit var webView: WebView
     private var playerConnection: PlayerConnection? = null
     private var isMusicServiceBound = false
+    private val activityScope = CoroutineScope(Dispatchers.Main)
 
     private val serviceConnection = object : ServiceConnection {
         override fun onServiceConnected(name: ComponentName?, service: IBinder?) {
@@ -39,7 +41,7 @@ class SoundCoreActivity : ComponentActivity() {
             if (service is MusicBinder) {
                 playerConnection = PlayerConnection(this@SoundCoreActivity, service, database, CoroutineScope(Dispatchers.Main))
                 runOnUiThread {
-                    Toast.makeText(this@SoundCoreActivity, "¡Motor de Audio Vinculado! 🏎️", Toast.LENGTH_SHORT).show()
+                    Toast.makeText(this@SoundCoreActivity, "¡Sistemas listos para la acción! 🏎️", Toast.LENGTH_SHORT).show()
                 }
             }
         }
@@ -76,20 +78,58 @@ class SoundCoreActivity : ComponentActivity() {
         super.onDestroy()
     }
 
+    // EL PUENTE MAESTRO HÍBRIDO
     inner class SoundCoreBridge {
+        
+        // Cable 1: Reproductor de Audio
         @JavascriptInterface
         fun playTrack(videoId: String) {
             runOnUiThread {
                 if (playerConnection != null) {
-                    Toast.makeText(this@SoundCoreActivity, "Inyectando a NewPipe: $videoId", Toast.LENGTH_SHORT).show()
-                    
-                    // Convertimos el String a un WatchEndpoint real con el ID del video y playlist nula
                     val endpoint = WatchEndpoint(videoId = videoId, playlistId = null)
-                    
-                    // Ahora sí, le pasamos el objeto exacto que el motor quiere masticar
                     playerConnection?.playQueue(YouTubeQueue(endpoint))
                 } else {
                     Toast.makeText(this@SoundCoreActivity, "Error: Motor de audio desconectado", Toast.LENGTH_LONG).show()
+                }
+            }
+        }
+
+        // Cable 2: El Buscador Satelital Innertube
+        @JavascriptInterface
+        fun searchTracks(query: String) {
+            // Corremos la búsqueda en un hilo de red para que no se congele tu pantalla
+            activityScope.launch(Dispatchers.IO) {
+                YouTube.searchSummary(query).onSuccess { summaryPage ->
+                    // Agarramos solo los resultados de canciones de la librería de Arturo
+                    val songs = summaryPage.songs
+                    
+                    // Armamos un JSON rústico pero súper rápido a mano para no meter librerías extras
+                    val jsonBuilder = StringBuilder("[")
+                    songs.forEachIndexed { index, song ->
+                        val title = song.title.replace("\"", "\\\"")
+                        val artist = song.artists.joinToString { it.name }.replace("\"", "\\\"")
+                        val id = song.id
+                        val thumbnail = song.thumbnail
+
+                        jsonBuilder.append("{")
+                            .append("\"id\":\"$id\",")
+                            .append("\"title\":\"$title\",")
+                            .append("\"artist\":\"$artist\",")
+                            .append("\"thumbnail\":\"$thumbnail\"")
+                            .append("}")
+                        if (index < songs.size - 1) jsonBuilder.append(",")
+                    }
+                    jsonBuilder.append("]")
+                    val finalJson = jsonBuilder.toString()
+
+                    // Mandamos el JSON de regreso al JavaScript de tu HTML
+                    runOnUiThread {
+                        webView.loadUrl("javascript:onSearchTracksResult('$finalJson')")
+                    }
+                }.onFailure { error ->
+                    runOnUiThread {
+                        Toast.makeText(this@SoundCoreActivity, "Fallo en el radar: ${error.message}", Toast.LENGTH_SHORT).show()
+                    }
                 }
             }
         }
