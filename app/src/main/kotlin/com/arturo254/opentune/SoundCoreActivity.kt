@@ -78,10 +78,8 @@ class SoundCoreActivity : ComponentActivity() {
         super.onDestroy()
     }
 
-    // EL PUENTE MAESTRO HÍBRIDO
     inner class SoundCoreBridge {
         
-        // Cable 1: Reproductor de Audio
         @JavascriptInterface
         fun playTrack(videoId: String) {
             runOnUiThread {
@@ -94,22 +92,21 @@ class SoundCoreActivity : ComponentActivity() {
             }
         }
 
-        // Cable 2: El Buscador Satelital Innertube
         @JavascriptInterface
         fun searchTracks(query: String) {
-            // Corremos la búsqueda en un hilo de red para que no se congele tu pantalla
             activityScope.launch(Dispatchers.IO) {
-                YouTube.searchSummary(query).onSuccess { summaryPage ->
-                    // Agarramos solo los resultados de canciones de la librería de Arturo
-                    val songs = summaryPage.songs
+                // Usamos la búsqueda directa con el filtro de canciones (Song) de la librería de Arturo
+                YouTube.search(query, YouTube.SearchFilter.Song).onSuccess { itemsPage ->
+                    // Las listas de items en la app de Arturo usan .items
+                    val items = itemsPage?.items ?: emptyList()
                     
-                    // Armamos un JSON rústico pero súper rápido a mano para no meter librerías extras
                     val jsonBuilder = StringBuilder("[")
-                    songs.forEachIndexed { index, song ->
-                        val title = song.title.replace("\"", "\\\"")
-                        val artist = song.artists.joinToString { it.name }.replace("\"", "\\\"")
-                        val id = song.id
-                        val thumbnail = song.thumbnail
+                    items.forEachIndexed { index, item ->
+                        val title = item.title.replace("\"", "\\\"")
+                        // Mapeamos los artistas de forma segura
+                        val artist = item.artists.joinToString { it.name }.replace("\"", "\\\"")
+                        val id = item.id
+                        val thumbnail = item.thumbnail
 
                         jsonBuilder.append("{")
                             .append("\"id\":\"$id\",")
@@ -117,12 +114,11 @@ class SoundCoreActivity : ComponentActivity() {
                             .append("\"artist\":\"$artist\",")
                             .append("\"thumbnail\":\"$thumbnail\"")
                             .append("}")
-                        if (index < songs.size - 1) jsonBuilder.append(",")
+                        if (index < items.size - 1) jsonBuilder.append(",")
                     }
                     jsonBuilder.append("]")
                     val finalJson = jsonBuilder.toString()
 
-                    // Mandamos el JSON de regreso al JavaScript de tu HTML
                     runOnUiThread {
                         webView.loadUrl("javascript:onSearchTracksResult('$finalJson')")
                     }
