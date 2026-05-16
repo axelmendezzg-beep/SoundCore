@@ -18,6 +18,7 @@ import com.arturo254.opentune.playback.PlayerConnection
 import com.arturo254.opentune.playback.queues.YouTubeQueue
 import com.arturo254.opentune.innertube.models.WatchEndpoint
 import com.arturo254.opentune.innertube.YouTube
+import com.arturo254.opentune.innertube.models.SongItem
 import com.arturo254.opentune.db.MusicDatabase
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.CoroutineScope
@@ -41,7 +42,7 @@ class SoundCoreActivity : ComponentActivity() {
             if (service is MusicBinder) {
                 playerConnection = PlayerConnection(this@SoundCoreActivity, service, database, CoroutineScope(Dispatchers.Main))
                 runOnUiThread {
-                    Toast.makeText(this@SoundCoreActivity, "¡Sistemas listos para la acción! 🏎️", Toast.LENGTH_SHORT).show()
+                    Toast.makeText(this@SoundCoreActivity, "¡Sistemas nativos acoplados! 🏎️", Toast.LENGTH_SHORT).show()
                 }
             }
         }
@@ -95,18 +96,17 @@ class SoundCoreActivity : ComponentActivity() {
         @JavascriptInterface
         fun searchTracks(query: String) {
             activityScope.launch(Dispatchers.IO) {
-                // Usamos la búsqueda directa con el filtro de canciones (Song) de la librería de Arturo
-                YouTube.search(query, YouTube.SearchFilter.Song).onSuccess { itemsPage ->
-                    // Las listas de items en la app de Arturo usan .items
-                    val items = itemsPage?.items ?: emptyList()
+                // Invocamos la búsqueda con el filtro exacto de Arturo
+                YouTube.search(query, YouTube.SearchFilter.FILTER_SONG).onSuccess { searchResult ->
+                    // Filtramos los items devueltos para quedarnos solo con los que sean SongItem
+                    val songs = searchResult.items.filterIsInstance<SongItem>()
                     
                     val jsonBuilder = StringBuilder("[")
-                    items.forEachIndexed { index, item ->
-                        val title = item.title.replace("\"", "\\\"")
-                        // Mapeamos los artistas de forma segura
-                        val artist = item.artists.joinToString { it.name }.replace("\"", "\\\"")
-                        val id = item.id
-                        val thumbnail = item.thumbnail
+                    songs.forEachIndexed { index, song ->
+                        val title = song.title.replace("\"", "\\\"")
+                        val artist = song.artists.joinToString { it.name }.replace("\"", "\\\"")
+                        val id = song.id
+                        val thumbnail = song.thumbnail ?: ""
 
                         jsonBuilder.append("{")
                             .append("\"id\":\"$id\",")
@@ -114,7 +114,7 @@ class SoundCoreActivity : ComponentActivity() {
                             .append("\"artist\":\"$artist\",")
                             .append("\"thumbnail\":\"$thumbnail\"")
                             .append("}")
-                        if (index < items.size - 1) jsonBuilder.append(",")
+                        if (index < songs.size - 1) jsonBuilder.append(",")
                     }
                     jsonBuilder.append("]")
                     val finalJson = jsonBuilder.toString()
@@ -124,7 +124,7 @@ class SoundCoreActivity : ComponentActivity() {
                     }
                 }.onFailure { error ->
                     runOnUiThread {
-                        Toast.makeText(this@SoundCoreActivity, "Fallo en el radar: ${error.message}", Toast.LENGTH_SHORT).show()
+                        Toast.makeText(this@SoundCoreActivity, "Fallo en el radar nativo: ${error.message}", Toast.LENGTH_SHORT).show()
                     }
                 }
             }

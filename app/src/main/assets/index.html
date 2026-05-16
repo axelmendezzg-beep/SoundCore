@@ -5,15 +5,15 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>SoundCore Terminal</title>
     <style>
-        body { background-color: #000; color: #fff; font-family: sans-serif; padding: 20px; }
-        h1 { text-align: center; letter-spacing: 2px; font-size: 24px; margin-bottom: 20px; }
+        body { background-color: #000; color: #fff; font-family: sans-serif; padding: 20px; margin: 0; }
+        h1 { text-align: center; letter-spacing: 2px; font-size: 24px; margin-top: 20px; margin-bottom: 20px; }
         .search-box { display: flex; gap: 10px; margin-bottom: 20px; }
         input { flex: 1; padding: 12px; border-radius: 8px; border: 1px solid #333; background: #111; color: #fff; font-size: 16px; }
         button { padding: 12px 20px; border-radius: 8px; border: none; background: #fff; color: #000; font-weight: bold; cursor: pointer; }
         .track-item { display: flex; align-items: center; gap: 15px; background: #111; padding: 10px; border-radius: 8px; margin-bottom: 10px; cursor: pointer; border: 1px solid #222; }
         .track-item img { width: 50px; height: 50px; border-radius: 6px; object-fit: cover; }
         .track-info { flex: 1; }
-        .track-title { font-weight: bold; font-size: 14px; margin-bottom: 4px; }
+        .track-title { font-weight: bold; font-size: 14px; margin-bottom: 4px; color: #fff; }
         .track-artist { color: #888; font-size: 12px; }
     </style>
 </head>
@@ -29,16 +29,15 @@
     <div id="resultados"></div>
 
     <script>
-        // Le grita a Kotlin que busque lo que escribiste
         function dispararBusqueda() {
             var query = document.getElementById('queryInput').value;
             if(query.trim() !== "") {
-                document.getElementById('resultados').innerHTML = "<p style='color:#888; text-align:center;'>Buscando en Innertube...</p>";
+                document.getElementById('resultados').innerHTML = "<p style='color:#888; text-align:center;'>Buscando en el motor nativo...</p>";
+                // Despertamos el radar de Kotlin
                 SoundCoreBridge.searchTracks(query);
             }
         }
 
-        // Esta es la función mágica que Kotlin despierta cuando llegan los resultados
         function onSearchTracksResult(jsonString) {
             var tracks = JSON.parse(jsonString);
             var contenedor = document.getElementById('resultados');
@@ -52,13 +51,12 @@
             tracks.forEach(function(track) {
                 var div = document.createElement('div');
                 div.className = 'track-item';
-                // Al darle clic a cualquier canción de la lista, se manda directo al motor de audio
                 div.onclick = function() {
                     SoundCoreBridge.playTrack(track.id);
                 };
 
                 div.innerHTML = `
-                    <img src="${track.thumbnail}" alt="cover">
+                    <img src="${track.thumbnail}" alt="cover" onerror="this.src='https://placehold.co/50x50/111/fff?text=Music'">
                     <div class="track-info">
                         <div class="track-title">${track.title}</div>
                         <div class="track-artist">${track.artist}</div>
