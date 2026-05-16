@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SoundCore Player</title>
+    <style>
+        body {
+            background-color: #000000;
+            color: #ffffff;
+            font-family: sans-serif;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100vh;
+            margin: 0;
+        }
+        h1 {
+            color: #fff;
+            font-size: 24px;
+            margin-bottom: 20px;
+            letter-spacing: 2px;
+        }
+        .btn-play {
+            background-color: #111111;
+            color: #ffffff;
+            border: 1px solid #333333;
+            padding: 15px 30px;
+            font-size: 16px;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: background 0.3s;
+        }
+        .btn-play:active {
+            background-color: #222222;
+        }
+    </style>
+</head>
+<body>
+
+    <h1>SOUNDCORE</h1>
+    <p style="color: #666;">HTML Híbrido Engine v1.0</p>
+    
+    <button class="btn-play" onclick="mandarIdAKotlin('6CHs4x2uqcQ')">
+        ▶ Probar Motor (Kanye West ID)
+    </button>
+
+    <script>
+        function mandarIdAKotlin(id) {
+            if (typeof SoundCoreBridge !== 'undefined') {
+                // Le gritamos al puente de Android
+                SoundCoreBridge.playTrack(id);
+            } else {
+                alert("HTML funcionando al 100%, pero estás fuera de la app. ID: " + id);
+            }
+        }
+    </script>
+
+</body>
+</html>

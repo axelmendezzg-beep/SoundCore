@@ -40,7 +40,7 @@
             android:required="false" />
 
         <activity
-            android:name=".MainActivity"
+            android:name=".SoundCoreActivity"
             android:exported="true"
             android:launchMode="singleTask"
             android:theme="@style/Theme.OpenTune"
