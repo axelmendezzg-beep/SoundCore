@@ -99,6 +99,7 @@ object PlayerColorExtractor {
             availableColors.add(tuneColorForMesh(fallbackSeed, 0.62f, 1.08f, 0.75f, 0.38f, 0.9f))
         }
         
+        if (availableColors.isNotEmpty()) { availableColors[0] = Color(0xFF000000) } else { availableColors.add(Color(0xFF000000)) }
         return@withContext availableColors
     }
 
