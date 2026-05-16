@@ -27,23 +27,23 @@ jobs:
 
       - uses: gradle/actions/setup-gradle@v5
 
-      # 1. Compilar en producción pura (Ultra velocidad de scroll)
+      # 1. Compilar en producción pura
       - name: Build Universal APK
         run: ./gradlew assembleUniversalRelease
 
-      # 2. Instalar la herramienta de firmas oficial de Android en el servidor
+      # 2. Descargar la herramienta de firmas
       - name: Install Uber APK Signer
         run: |
           wget https://github.com/patrickfav/uber-apk-signer/releases/download/v1.3.0/uber-apk-signer-1.3.0.jar
 
-      # 3. Firmar el APK usando la firma de pruebas automática en el servidor
+      # 3. Firmar el APK de producción con la firma compatible
       - name: Auto Sign APK
         run: |
           APK_PATH=$(find app/build/outputs/apk/universal/release -name "*.apk" | head -n 1)
           java -jar uber-apk-signer-1.3.0.jar --apks "$APK_PATH" --out .
-          mv app-universal-aligned-signed.apk app-universal.apk
+          mv app-universal-release-aligned-debugSigned.apk app-universal.apk
 
-      # 4. Subir el APK 100% firmado y optimizado
+      # 4. Subir el APK final de 25.14 MiB
       - name: Upload Nightly
         uses: softprops/action-gh-release@v2
         with:
