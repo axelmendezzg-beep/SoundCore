@@ -27,27 +27,28 @@ jobs:
 
       - uses: gradle/actions/setup-gradle@v5
 
-      # 🔥 SOLO UNIVERSAL
+      # 1. Compilar en producción pura (Ultra velocidad de scroll)
       - name: Build Universal APK
-        run: ./gradlew assembleUniversalDebug
+        run: ./gradlew assembleUniversalRelease
 
-      # 🔍 Ver qué se generó
-      - name: List outputs
-        run: ls -R app/build/outputs/apk/
-
-      # ✅ Encontrar APK correcto
-      - name: Get APK
+      # 2. Instalar la herramienta de firmas oficial de Android en el servidor
+      - name: Install Uber APK Signer
         run: |
-          APK_PATH=$(find app/build/outputs/apk/universal/debug -name "*.apk" | head -n 1)
-          echo "APK encontrado en: $APK_PATH"
-          cp "$APK_PATH" app-universal.apk
+          wget https://github.com/patrickfav/uber-apk-signer/releases/download/v1.3.0/uber-apk-signer-1.3.0.jar
 
-      # 🚀 Release nightly
+      # 3. Firmar el APK usando la firma de pruebas automática en el servidor
+      - name: Auto Sign APK
+        run: |
+          APK_PATH=$(find app/build/outputs/apk/universal/release -name "*.apk" | head -n 1)
+          java -jar uber-apk-signer-1.3.0.jar --apks "$APK_PATH" --out .
+          mv app-universal-aligned-signed.apk app-universal.apk
+
+      # 4. Subir el APK 100% firmado y optimizado
       - name: Upload Nightly
         uses: softprops/action-gh-release@v2
         with:
           tag_name: nightly
-          name: Nightly Build (Universal)
+          name: SoundCore Ultra Release ⚡
           prerelease: true
           files: app-universal.apk
         env:
