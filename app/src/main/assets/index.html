@@ -6,6 +6,24 @@
     <title>SoundCore App</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
     <link rel="stylesheet" href="css/style.css">
+    <style>
+        /* Parches rápidos de capas para asegurar que el reproductor mini flote sobre todo */
+        .player-bar {
+            z-index: 9999 !important; /* Encima de absolutamente todo */
+        }
+        .full-player {
+            z-index: 10000 !important; /* El reproductor completo encima del mini si se abre */
+        }
+        .artist-profile-panel, .config-panel {
+            z-index: 9990 !important; /* Los paneles corren justo por debajo del mini-player */
+        }
+        .fp-individual-artist {
+            cursor: pointer;
+        }
+        .fp-individual-artist:hover {
+            text-decoration: underline;
+        }
+    </style>
 </head>
 <body>
 
@@ -39,7 +57,7 @@
                 <div class="card-artist">Bad Bunny</div>
             </div>
             <div class="suggested-card" onclick="reproducirSugerida('Éxtasis', 'Cartel de Santa', 'https://i.scdn.co/image/ab67616d0000b2739199d799052069726cb3b9a0', 'fN97v_n7PZ8')">
-                <img src="https://i.scdn.co/image/ab67616d0000b2739199d799052069726cb3b9a0" alt="cover">
+                <img src="https://i.unsplash.com/image/ab67616d0000b2739199d799052069726cb3b9a0" alt="cover">
                 <div class="card-title">Éxtasis</div>
                 <div class="card-artist">Cartel de Santa</div>
             </div>
@@ -264,20 +282,15 @@
     </nav>
 
     <script>
-        // Guardamos la duración global de la canción actual para operaciones de salto
         var duracionCancionActual = 0;
-
-        // Variable global para almacenar el browseId del artista en reproducción activa
         var browseIdArtistaActual = "";
 
-        // Función mágica para decodificar Base64 con UTF-8 de forma segura (Tildes y Ñs resueltas)
         function decodeBase64Utf8(base64) {
             return decodeURIComponent(Array.prototype.map.call(atob(base64), function(c) {
                 return '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2);
             }).join(''));
         }
 
-        // Sistema de navegación global entre pestañas principales
         function cambiarPestaña(vista) {
             document.querySelectorAll('.app-view').forEach(v => v.classList.remove('active'));
             document.querySelectorAll('.nav-item').forEach(t => t.classList.remove('active'));
@@ -286,7 +299,6 @@
             document.getElementById(`tab-${vista}`).classList.add('active');
         }
 
-        // DISPARADOR DE BÚSQUEDA REAL: Conecta el Input con el backend en Kotlin
         function dispararBusquedaReal() {
             var query = document.getElementById('queryInput').value;
             if(query.trim() !== "") {
@@ -299,7 +311,7 @@
             }
         }
 
-               // RECEPTOR DE DATOS ENCODED: Procesa la respuesta de Kotlin y dibuja las rolas reales
+        // RECEPTOR DE BUSQUEDA: Ahora todo el renglón es un botón directo de play sin links internos
         function onSearchTracksResultEncoded(base64JsonString) {
             var contenedor = document.getElementById('resultados');
             try {
@@ -315,32 +327,18 @@
                 tracks.forEach(function(track) {
                     var div = document.createElement('div');
                     div.className = 'track-item';
+                    div.style.cursor = 'pointer';
                     
-                    // Al hacer clic en el contenedor de la rola, se reproduce directamente
-                    div.onclick = function(e) { 
-                        if (e.target.closest('.individual-artist')) return; // No interrumpir si pica al nombre del artista
+                    // Al hacer clic en cualquier parte del renglón, reproduce directo
+                    div.onclick = function() { 
                         lanzarReproduccionNativa(track.title, track.artist, track.thumbnail, track.id, track.artistBrowseId || ""); 
                     };
-
-                    // Separamos los artistas si vienen juntos por comas para hacerlos individuales
-                    var listaArtistasHTML = "";
-                    if (track.artist.includes(",")) {
-                        var artistasArray = track.artist.split(",");
-                        artistasArray.forEach(function(art, index) {
-                            var nombreLimpio = art.trim();
-                            // El primer artista se lleva el browseId real del radar, los colaboradores se buscan por nombre de respaldo
-                            var bid = (index === 0) ? (track.artistBrowseId || "") : "";
-                            listaArtistasHTML += `<span class="individual-artist" style="cursor: pointer; text-decoration: underline;" onclick="event.stopPropagation(); abrirArtistPanelReal('${bid}', '${nombreLimpio.replace(/'/g, "\\'")}')">${nombreLimpio}</span>${index < artistasArray.length - 1 ? ', ' : ''}`;
-                        });
-                    } else {
-                        listaArtistasHTML = `<span class="individual-artist" style="cursor: pointer;" onclick="event.stopPropagation(); abrirArtistPanelReal('${track.artistBrowseId || ''}', '${track.artist.replace(/'/g, "\\'")}')">${track.artist}</span>`;
-                    }
 
                     div.innerHTML = `
                         <img src="${track.thumbnail}" alt="cover" onerror="this.src='https://placehold.co/50x50/111/fff?text=Music'">
                         <div class="track-info">
                             <div class="track-title">${track.title}</div>
-                            <div class="track-artist" style="color: var(--text-muted); font-size: 13px;">${listaArtistasHTML}</div>
+                            <div class="track-artist" style="color: var(--text-muted); font-size: 13px;">${track.artist}</div>
                         </div>
                         <i class="fa-solid fa-play" style="color:var(--text-muted); font-size:12px; margin-right:10px;"></i>
                     `;
@@ -352,13 +350,11 @@
         }
 
         function reproducirSugerida(titulo, artista, foto, videoId) {
-            // Las sugeridas de inicio no traen browseId por defecto, pasamos vacío para usar fallback estático
             lanzarReproduccionNativa(titulo, artista, foto, videoId, "");
         }
 
-        // CONTROL CENTRAL DE REPRODUCCIÓN: Actualiza interfaz y le manda el id de la rola a Android
+        // REPRODUCCIÓN NATIVA: Mapea la separación de los artistas únicamente en el Full Player
         function lanzarReproduccionNativa(titulo, artista, foto, videoId, artistBrowseId) {
-            // Guardamos el browseId en memoria para cuando den clic al nombre del artista en el Full Player
             browseIdArtistaActual = artistBrowseId;
 
             document.getElementById('pTitle').innerText = titulo;
@@ -372,19 +368,52 @@
             };
 
             document.getElementById('fpTitle').innerText = titulo;
-            document.getElementById('fpArtist').innerText = artista;
+            
+         // Lógica de separación de artistas limpia movida exclusivamente al Full Player
+            var fpArtistContainer = document.getElementById('fpArtist');
+            fpArtistContainer.innerHTML = "";
+
+            if (artista.includes(",")) {
+                var artistasArray = artista.split(",");
+                artistasArray.forEach(function(art, index) {
+                    var nombreLimpio = art.trim();
+                    var bid = (index === 0) ? (browseIdArtistaActual || "") : "";
+                    
+                    var span = document.createElement('span');
+                    span.className = 'fp-individual-artist';
+                    span.innerText = nombreLimpio;
+                    span.onclick = function(e) {
+                        e.stopPropagation();
+                        cerrarFullPlayer();
+                        if (bid !== "") {
+                            abrirArtistPanelReal(bid, nombreLimpio);
+                        } else {
+                            abrirArtistPanel(nombreLimpio);
+                        }
+                    };
+
+                    fpArtistContainer.appendChild(span);
+                    if (index < artistasArray.length - 1) {
+                        fpArtistContainer.appendChild(document.createTextNode(", "));
+                    }
+                });
+            } else {
+                var span = document.createElement('span');
+                span.className = 'fp-individual-artist';
+                span.innerText = artista;
+                span.onclick = function(e) {
+                    e.stopPropagation();
+                    cerrarFullPlayer();
+                    if (browseIdArtistaActual && browseIdArtistaActual !== "") {
+                        abrirArtistPanelReal(browseIdArtistaActual, artista);
+                    } else {
+                        abrirArtistPanel(artista);
+                    }
+                };
+                fpArtistContainer.appendChild(span);
+            }
+
             document.getElementById('fpThumb').src = foto;
-
- // Al dar clic al artista en el reproductor completo, valida si hay ID dinámico o usa el estático
-            document.getElementById('fpArtist').onclick = function() {
-                cerrarFullPlayer();
-                if (browseIdArtistaActual && browseIdArtistaActual !== "") {
-                    abrirArtistPanelReal(browseIdArtistaActual, artista);
-                } else {
-                    abrirArtistPanel(artista);
-                }
-            };
-
             setPlaybackState(true);
 
             if (typeof SoundCoreBridge !== "undefined") {
@@ -392,30 +421,21 @@
             }
         }
 
-        // COMUNICACIÓN ACTIVA CON EL CONTROL DE KOTLIN
         function togglePlaySimulado() {
-            if (typeof SoundCoreBridge !== "undefined") {
-                SoundCoreBridge.togglePlayPause();
-            }
+            if (typeof SoundCoreBridge !== "undefined") { SoundCoreBridge.togglePlayPause(); }
         }
 
         function saltarSiguiente() {
-            if (typeof SoundCoreBridge !== "undefined") {
-                SoundCoreBridge.skipToNext();
-            }
+            if (typeof SoundCoreBridge !== "undefined") { SoundCoreBridge.skipToNext(); }
         }
 
         function saltarAnterior() {
-            if (typeof SoundCoreBridge !== "undefined") {
-                SoundCoreBridge.skipToPrevious();
-            }
+            if (typeof SoundCoreBridge !== "undefined") { SoundCoreBridge.skipToPrevious(); }
         }
 
-        // Recibe el estado real del reproductor nativo
         function setPlaybackState(isPlaying) {
             var btnMini = document.getElementById('pBtn');
             var btnFull = document.getElementById('fpBtn');
-            
             if(isPlaying) {
                 btnMini.innerHTML = '<i class="fa-solid fa-pause"></i>';
                 btnFull.innerHTML = '<i class="fa-solid fa-pause"></i>';
@@ -425,57 +445,52 @@
             }
         }
 
-        // Formateador de segundos a mm:ss
         function formatTime(seconds) {
             var min = Math.floor(seconds / 60);
             var sec = Math.floor(seconds % 60);
             return min + ":" + (sec < 10 ? "0" : "") + sec;
         }
 
-        // ACTUALIZACIÓN DE PROGRESO DESDE EL RELOJ ASÍNCRONO DE KOTLIN
         function updatePlaybackProgress(current, duration) {
             duracionCancionActual = duration; 
             var porcentaje = (current / duration) * 100;
-            
             var progressBar = document.querySelector('.progress-current');
             if (progressBar) progressBar.style.width = porcentaje + '%';
-            
             document.getElementById('timeCurrent').innerText = formatTime(current);
             document.getElementById('timeTotal').innerText = formatTime(duration);
         }
 
-        // EVENT LISTENER PARA MANEJAR EL CLIC EN LA BARRA DE PROGRESO
         document.getElementById('realProgressBar')?.addEventListener('click', function(e) {
             var rect = this.getBoundingClientRect();
             var clickX = e.clientX - rect.left;
             var width = rect.width;
             var porcentaje = clickX / width;
-            
             if (duracionCancionActual > 0 && typeof SoundCoreBridge !== "undefined") {
                 var destinoSegundos = Math.floor(porcentaje * duracionCancionActual);
                 SoundCoreBridge.seekToPosition(destinoSegundos);
             }
         });
 
-        // Control de Modales y Paneles Deslizantes
         function abrirFullPlayer() { document.getElementById('fullPlayer').classList.add('open'); }
         function cerrarFullPlayer() { document.getElementById('fullPlayer').classList.remove('open'); }
         function abrirConfigPanel() { document.getElementById('configPanel').classList.add('open'); }
         function cerrarConfigPanel() { document.getElementById('configPanel').classList.remove('open'); }
         
+        function cerrarArtistPanel() { 
+            document.getElementById('artistPanel').classList.remove('open'); 
+        }
+
         function filtrarCategoria(categoria) {
             document.querySelectorAll('.chip').forEach(c => c.classList.remove('active'));
             event.currentTarget.classList.add('active');
         }
 
-        // --- SISTEMA DINÁMICO DE ARTISTAS ---
         const infoArtistas = {
             "Kanye West": { banner: "https://images.unsplash.com/photo-1611339555312-e607c8352fd7?q=80&w=600", listeners: "74,103,449" },
             "Bad Bunny": { banner: "https://images.unsplash.com/photo-1571330735066-03add575afe8?q=80&w=600", listeners: "69,541,200" },
             "Cartel de Santa": { banner: "https://images.unsplash.com/photo-1524368535928-5b5e00ddc76b?q=80&w=600", listeners: "12,310,450" }
         };
 
-        // Panel Estático Fallback (Mantiene el funcionamiento clásico si no hay internet o ID)
         function abrirArtistPanel(nombreArtista) {
             const panel = document.getElementById('artistPanel');
             const data = infoArtistas[nombreArtista] || { banner: "https://images.unsplash.com/photo-1501386761578-eac5c94b800a?q=80&w=600", listeners: "1,200,500" };
@@ -486,11 +501,9 @@
 
             const container = document.getElementById('artistTracksContainer');
             container.innerHTML = `<p style="color:var(--text-muted); padding:16px; font-size:13px;">Buscando lanzamientos populares del artista...</p>`;
-            
             panel.classList.add('open');
         }
 
-        // NUEVA FUNCIÓN: Dispara la solicitud del canal real del artista a InnerTube a través de Kotlin
         function abrirArtistPanelReal(browseId, nombreArtista) {
             if (!browseId || browseId === "") {
                 abrirArtistPanel(nombreArtista);
@@ -511,7 +524,6 @@
             }
         }
 
-               // NUEVO RECEPTOR: Procesa el Base64 que manda la Activity con temas y álbumes del artista
         function onArtistDetailsResultEncoded(base64Json) {
             try {
                 var data = JSON.parse(decodeBase64Utf8(base64Json));
@@ -524,7 +536,6 @@
                 var container = document.getElementById('artistTracksContainer');
                 container.innerHTML = "";
                 
-                // --- SECCIÓN 1: CANCIONES POPULARES ---
                 if(data.tracks && data.tracks.length > 0) {
                     data.tracks.forEach(function(track) {
                         var div = document.createElement('div');
@@ -546,7 +557,6 @@
                     container.innerHTML = "<p style='color:var(--text-muted); padding:16px; font-size:13px;'>No se encontraron lanzamientos disponibles.</p>";
                 }
 
-                // --- SECCIÓN 2: ÁLBUMES DE ESTUDIO (NUEVO) ---
                 if(data.albums && data.albums.length > 0) {
                     var tituloAlbumes = document.createElement('div');
                     tituloAlbumes.className = 'section-title';
@@ -554,7 +564,6 @@
                     tituloAlbumes.innerText = 'Álbumes y Sencillos';
                     container.appendChild(tituloAlbumes);
 
-                    // Reutilizamos tu clase "suggested-grid" para pintar las portadas de los discos en cuadrícula
                     var gridAlbumes = document.createElement('div');
                     gridAlbumes.className = 'suggested-grid';
                     gridAlbumes.style.padding = '0 16px 30px 16px';
@@ -564,7 +573,6 @@
                         card.className = 'suggested-card';
                         card.onclick = function() {
                             alert("Cargando lista del álbum: " + album.title + " 💿");
-                            // Próximamente puedes enlazarlo a un SoundCoreBridge.loadAlbumTracks(album.playlistId)
                         };
                         card.innerHTML = `
                             <img src="${album.thumbnail}" alt="cover" onerror="this.src='https://placehold.co/100x100/111/fff?text=Disco'">
@@ -581,7 +589,6 @@
             }
         }
 
-        // --- SISTEMA DE LA BIBLIOTECA ---
         let contadorPlaylists = 0;
         function crearPlaylistSimulada() {
             let nombre = prompt("Nombre de tu nueva Playlist:", "Mix Perrón " + (++contadorPlaylists));
@@ -605,6 +612,6 @@
             `;
             container.appendChild(div);
         }
-</script>
+    </script>
 </body>
 </html>
