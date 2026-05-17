@@ -22,9 +22,8 @@ import com.arturo254.opentune.innertube.YouTube
 import com.arturo254.opentune.innertube.models.SongItem
 import com.arturo254.opentune.db.MusicDatabase
 import dagger.hilt.android.AndroidEntryPoint
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.launch
+import kotlinx.coroutines.*
+import kotlinx.coroutines.flow.collectLatest
 import javax.inject.Inject
 
 @AndroidEntryPoint
@@ -35,20 +34,34 @@ class SoundCoreActivity : ComponentActivity() {
     private lateinit var webView: WebView
     private var playerConnection: PlayerConnection? = null
     private var isMusicServiceBound = false
-    private val activityScope = CoroutineScope(Dispatchers.Main)
+    private val activityScope = CoroutineScope(Dispatchers.Main + Job())
+    private var progressJob: Job? = null
 
     private val serviceConnection = object : ServiceConnection {
         override fun onServiceConnected(name: ComponentName?, service: IBinder?) {
             isMusicServiceBound = true
             if (service is MusicBinder) {
-                playerConnection = PlayerConnection(this@SoundCoreActivity, service, database, CoroutineScope(Dispatchers.Main))
+                val conn = PlayerConnection(this@SoundCoreActivity, service, database, CoroutineScope(Dispatchers.Main))
+                playerConnection = conn
+                
                 runOnUiThread {
                     Toast.makeText(this@SoundCoreActivity, "¡Sistemas nativos acoplados! 🏎️", Toast.LENGTH_SHORT).show()
                 }
+
+                // 📡 Hilo 1: Escucha si pausaste o le diste play desde fuera de la app o barra de notificaciones
+                activityScope.launch {
+                    conn.isPlaying.collectLatest { playing ->
+                        webView.loadUrl("javascript:setPlaybackState($playing)")
+                    }
+                }
+
+                // 🕒 Hilo 2: Activa el reloj que manda los segundos reales a tu barra de progreso
+                startProgressTracker()
             }
         }
         override fun onServiceDisconnected(name: ComponentName?) {
             isMusicServiceBound = false
+            progressJob?.cancel()
             playerConnection?.dispose()
             playerConnection = null
         }
@@ -71,11 +84,32 @@ class SoundCoreActivity : ComponentActivity() {
         bindService(Intent(this, MusicService::class.java), serviceConnection, Context.BIND_AUTO_CREATE)
     }
 
+    // Monitorea el segundo exacto del reproductor de Arturo cada 1000 milisegundos
+    private fun startProgressTracker() {
+        progressJob?.cancel()
+        progressJob = activityScope.launch(Dispatchers.Main) {
+            while (isActive) {
+                playerConnection?.player?.let { p ->
+                    if (p.isPlaying) {
+                        val current = p.currentPosition / 1000
+                        val duration = p.duration / 1000
+                        if (duration > 0) {
+                            webView.loadUrl("javascript:updatePlaybackProgress($current, $duration)")
+                        }
+                    }
+                }
+                delay(1000)
+            }
+        }
+    }
+
     override fun onDestroy() {
         if (isMusicServiceBound) {
             unbindService(serviceConnection)
             isMusicServiceBound = false
         }
+        progressJob?.cancel()
+        activityScope.cancel()
         playerConnection?.dispose()
         super.onDestroy()
     }
@@ -91,6 +125,38 @@ class SoundCoreActivity : ComponentActivity() {
                 } else {
                     Toast.makeText(this@SoundCoreActivity, "Error: Motor de audio desconectado", Toast.LENGTH_LONG).show()
                 }
+            }
+        }
+
+        // --- 🎛️ NUEVOS PUENTES: CONTROLES REALES DE AUDIO ---
+        
+        @JavascriptInterface
+        fun togglePlayPause() {
+            runOnUiThread {
+                playerConnection?.player?.let { p ->
+                    if (p.isPlaying) p.pause() else p.play()
+                }
+            }
+        }
+
+        @JavascriptInterface
+        fun skipToNext() {
+            runOnUiThread {
+                playerConnection?.player?.seekToNext()
+            }
+        }
+
+        @JavascriptInterface
+        fun skipToPrevious() {
+            runOnUiThread {
+                playerConnection?.player?.seekToPrevious()
+            }
+        }
+
+        @JavascriptInterface
+        fun seekToPosition(seconds: Int) {
+            runOnUiThread {
+                playerConnection?.player?.seekTo((seconds * 1000).toLong())
             }
         }
 
@@ -118,12 +184,9 @@ class SoundCoreActivity : ComponentActivity() {
                     jsonBuilder.append("]")
                     val finalJson = jsonBuilder.toString()
                     
-                    // --- LA CURA MÁGICA ---
-                    // Encodeamos el JSON en Base64 para que las tildes y caracteres raros no rompan la tubería
                     val base64Json = Base64.encodeToString(finalJson.toByteArray(Charsets.UTF_8), Base64.NO_WRAP)
 
                     runOnUiThread {
-                        // Le pasamos el paquete de Base64 al nuevo método de JavaScript
                         webView.loadUrl("javascript:onSearchTracksResultEncoded('$base64Json')")
                     }
                 }.onFailure { error ->

@@ -153,20 +153,20 @@
             </div>
 
             <div class="progress-container">
-                <div class="progress-bar">
-                    <div class="progress-current" style="width: 35%;"></div>
+                <div class="progress-bar" id="realProgressBar">
+                    <div class="progress-current" style="width: 0%;"></div>
                 </div>
                 <div class="progress-time">
-                    <span>1:12</span>
-                    <span>3:45</span>
+                    <span id="timeCurrent">0:00</span>
+                    <span id="timeTotal">0:00</span>
                 </div>
             </div>
 
             <div class="full-player-controls">
                 <button class="ctrl-btn text-muted"><i class="fa-solid fa-shuffle"></i></button>
-                <button class="ctrl-btn prev-next"><i class="fa-solid fa-backward-step"></i></button>
+                <button class="ctrl-btn prev-next" onclick="saltarAnterior()"><i class="fa-solid fa-backward-step"></i></button>
                 <button class="ctrl-btn-play" id="fpBtn" onclick="togglePlaySimulado()"><i class="fa-solid fa-play"></i></button>
-                <button class="ctrl-btn prev-next"><i class="fa-solid fa-forward-step"></i></button>
+                <button class="ctrl-btn prev-next" onclick="saltarSiguiente()"><i class="fa-solid fa-forward-step"></i></button>
                 <button class="ctrl-btn text-muted"><i class="fa-solid fa-repeat"></i></button>
             </div>
         </div>
@@ -264,6 +264,9 @@
     </nav>
 
     <script>
+        // Guardamos la duración global de la canción actual para operaciones de salto
+        var duracionCancionActual = 0;
+
         // Función mágica para decodificar Base64 con UTF-8 de forma segura (Tildes y Ñs resueltas)
         function decodeBase64Utf8(base64) {
             return decodeURIComponent(Array.prototype.map.call(atob(base64), function(c) {
@@ -333,7 +336,6 @@
 
         // CONTROL CENTRAL DE REPRODUCCIÓN: Actualiza interfaz y le manda el id de la rola a Android
         function lanzarReproduccionNativa(titulo, artista, foto, videoId) {
-            // Sincronizar textos e imágenes del Reproductor pequeño
             document.getElementById('pTitle').innerText = titulo;
             document.getElementById('pArtist').innerText = artista;
             document.getElementById('pThumb').src = foto;
@@ -344,7 +346,6 @@
                 abrirFullPlayer();
             };
 
-            // Sincronizar textos e imágenes del Reproductor Completo (Grande)
             document.getElementById('fpTitle').innerText = titulo;
             document.getElementById('fpArtist').innerText = artista;
             document.getElementById('fpThumb').src = foto;
@@ -354,21 +355,38 @@
                 abrirArtistPanel(artista);
             };
 
-            document.getElementById('pBtn').innerHTML = '<i class="fa-solid fa-pause"></i>';
-            document.getElementById('fpBtn').innerHTML = '<i class="fa-solid fa-pause"></i>';
+            setPlaybackState(true);
 
-            // ORDEN DIRECTA AL MOTOR KOTLIN MULTIMEDIA
             if (typeof SoundCoreBridge !== "undefined") {
                 SoundCoreBridge.playTrack(videoId);
             }
         }
 
-        // Sincronización visual de Play / Pausa
+        // COMUNICACIÓN ACTIVA CON EL CONTROL DE KOTLIN
         function togglePlaySimulado() {
+            if (typeof SoundCoreBridge !== "undefined") {
+                SoundCoreBridge.togglePlayPause();
+            }
+        }
+
+        function saltarSiguiente() {
+            if (typeof SoundCoreBridge !== "undefined") {
+                SoundCoreBridge.skipToNext();
+            }
+        }
+
+        function saltarAnterior() {
+            if (typeof SoundCoreBridge !== "undefined") {
+                SoundCoreBridge.skipToPrevious();
+            }
+        }
+
+        // Recibe el estado real del reproductor nativo
+        function setPlaybackState(isPlaying) {
             var btnMini = document.getElementById('pBtn');
             var btnFull = document.getElementById('fpBtn');
             
-            if(btnMini.innerHTML.includes('fa-play')) {
+            if(isPlaying) {
                 btnMini.innerHTML = '<i class="fa-solid fa-pause"></i>';
                 btnFull.innerHTML = '<i class="fa-solid fa-pause"></i>';
             } else {
@@ -376,6 +394,38 @@
                 btnFull.innerHTML = '<i class="fa-solid fa-play"></i>';
             }
         }
+
+        // Formateador de segundos a mm:ss
+        function formatTime(seconds) {
+            var min = Math.floor(seconds / 60);
+            var sec = Math.floor(seconds % 60);
+            return min + ":" + (sec < 10 ? "0" : "") + sec;
+        }
+
+        // ACTUALIZACIÓN DE PROGRESO DESDE EL RELOJ ASÍNCRONO DE KOTLIN
+        function updatePlaybackProgress(current, duration) {
+            duracionCancionActual = duration; 
+            var porcentaje = (current / duration) * 100;
+            
+            var progressBar = document.querySelector('.progress-current');
+            if (progressBar) progressBar.style.width = porcentaje + '%';
+            
+            document.getElementById('timeCurrent').innerText = formatTime(current);
+            document.getElementById('timeTotal').innerText = formatTime(duration);
+        }
+
+        // EVENT LISTENER PARA MANEJAR EL CLIC EN LA BARRA DE PROGRESO
+        document.getElementById('realProgressBar')?.addEventListener('click', function(e) {
+            var rect = this.getBoundingClientRect();
+            var clickX = e.clientX - rect.left;
+            var width = rect.width;
+            var porcentaje = clickX / width;
+            
+            if (duracionCancionActual > 0 && typeof SoundCoreBridge !== "undefined") {
+                var destinoSegundos = Math.floor(porcentaje * duracionCancionActual);
+                SoundCoreBridge.seekToPosition(destinoSegundos);
+            }
+        });
 
         // Control de Modales y Paneles Deslizantes
         function abrirFullPlayer() { document.getElementById('fullPlayer').classList.add('open'); }
@@ -387,7 +437,8 @@
             document.querySelectorAll('.chip').forEach(c => c.classList.remove('active'));
             event.currentTarget.classList.add('active');
         }
-     // --- SISTEMA DINÁMICO DE ARTISTAS (DICCIONARIO ESTÁTICO DE MOMENTO) ---
+
+        // --- SISTEMA DINÁMICO DE ARTISTAS ---
         const infoArtistas = {
             "Kanye West": { banner: "https://images.unsplash.com/photo-1611339555312-e607c8352fd7?q=80&w=600", listeners: "74,103,449" },
             "Bad Bunny": { banner: "https://images.unsplash.com/photo-1571330735066-03add575afe8?q=80&w=600", listeners: "69,541,200" },
