@@ -1,0 +1,855 @@
+:root {
+    --bg-main: #000000;
+    --bg-surface: #0c0c0c;
+    --bg-input: #141414;
+    --border-color: #1a1a1a;
+    --text-main: #ffffff;
+    --text-muted: #8e8e93;
+    --accent: #ffffff;
+}
+
+body { 
+    background-color: var(--bg-main); 
+    color: var(--text-main); 
+    font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", sans-serif; 
+    padding: 20px; 
+    margin: 0; 
+    padding-bottom: 160px; /* Más espacio abajo para que libre el reproductor Y la nav-bar */
+    -webkit-tap-highlight-color: transparent;
+}
+
+/* --- MANEJO DE VISTAS --- */
+.app-view {
+    display: none; /* Todo oculto por defecto */
+}
+.app-view.active {
+    display: block; /* Solo se muestra la pestaña activa */
+    animation: fadeIn 0.3s ease;
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(5px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+.view-header {
+    font-size: 26px;
+    font-weight: 800;
+    margin: 20px 0 25px 0;
+    letter-spacing: 0.5px;
+}
+
+h1 { 
+    text-align: center; 
+    letter-spacing: 6px; 
+    font-size: 24px; 
+    margin: 25px 0 5px 0; 
+    font-weight: 900;
+}
+
+.subtitle {
+    text-align: center;
+    font-size: 11px;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 2px;
+    margin-bottom: 35px;
+}
+
+/* --- REJILLA DE SUGERENCIAS (INICIO) --- */
+.suggested-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr); /* Dos columnas simétricas perfectas */
+    gap: 16px;
+}
+
+.suggested-card {
+    background: var(--bg-surface);
+    padding: 12px;
+    border-radius: 16px;
+    border: 1px solid var(--border-color);
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.suggested-card:active {
+    transform: scale(0.96);
+    background: #121212;
+}
+
+.suggested-card img {
+    width: 100%;
+    aspect-ratio: 1; /* Cuadrado perfecto estilo CD */
+    object-fit: cover;
+    border-radius: 10px;
+    margin-bottom: 10px;
+    box-shadow: 0 6px 16px rgba(0,0,0,0.6);
+}
+
+.card-title {
+    font-weight: 600;
+    font-size: 14px;
+    margin-bottom: 2px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.card-artist {
+    color: var(--text-muted);
+    font-size: 12px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+/* --- BUSCADOR CORREGIDO 🔥 --- */
+.search-box { 
+    display: flex; 
+    gap: 10px; 
+    margin-bottom: 25px; 
+}
+
+input { 
+    flex: 1; 
+    padding: 14px 18px; 
+    border-radius: 12px; 
+    border: 1px solid var(--border-color); 
+    background: var(--bg-input); 
+    color: var(--text-main); 
+    font-size: 15px; 
+    transition: all 0.3s ease;
+}
+
+input:focus { 
+    border-color: #444; 
+    outline: none; 
+    background: #1a1a1a;
+}
+
+.search-box button {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 16px;
+    padding: 14px 20px;
+}
+
+button { 
+    padding: 14px 22px; 
+    border-radius: 12px; 
+    border: none; 
+    background: var(--accent); 
+    color: #000; 
+    font-weight: bold; 
+    cursor: pointer; 
+    transition: transform 0.1s ease, opacity 0.2s ease;
+}
+
+button:active {
+    transform: scale(0.95);
+    opacity: 0.9;
+}
+
+/* --- ELEMENTOS DE LISTA --- */
+.track-item { 
+    display: flex; align-items: center; gap: 16px; background: var(--bg-surface); 
+    padding: 12px; border-radius: 14px; margin-bottom: 12px; border: 1px solid var(--border-color); 
+    transition: all 0.2s ease;
+}
+.track-item:active { 
+    background: #161616;
+    transform: scale(0.98);
+}
+.track-item img { width: 52px; height: 52px; border-radius: 8px; object-fit: cover; }
+.track-info { flex: 1; min-width: 0; }
+.track-title { font-weight: 600; font-size: 14px; margin-bottom: 3px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.track-artist { color: var(--text-muted); font-size: 12px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+/* --- BARRA DEL REPRODUCTOR (FLOTANTE ABAJO) --- */
+.player-bar { 
+    position: fixed; 
+    bottom: 85px; /* Recorridda hacia arriba para dejar espacio a la nav-bar */
+    left: 15px; right: 15px; 
+    background: rgba(15, 15, 15, 0.95); 
+    backdrop-filter: blur(25px); -webkit-backdrop-filter: blur(25px);
+    border: 1px solid var(--border-color); 
+    padding: 12px 16px; border-radius: 18px; 
+    display: flex; align-items: center; gap: 14px; z-index: 90; 
+    box-shadow: 0 8px 24px rgba(0,0,0,0.7);
+    animation: slideUp 0.4s cubic-bezier(0.25, 1, 0.5, 1);
+}
+
+@keyframes slideUp {
+    from { transform: translateY(100px); opacity: 0; }
+    to { transform: translateY(0); opacity: 1; }
+}
+
+.player-thumb { width: 44px; height: 44px; border-radius: 6px; object-fit: cover; }
+.player-info { flex: 1; min-width: 0; }
+.player-title { font-size: 14px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.player-artist { font-size: 12px; color: var(--text-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+.play-btn {
+    background: var(--accent);
+    color: #000;
+    border: none;
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: transform 0.1s ease;
+}
+.play-btn:active {
+    transform: scale(0.9);
+}
+.play-btn i {
+    font-size: 14px;
+    color: #000;
+}
+
+/* --- SUBMENÚ / BARRA DE PESTAÑAS (FIJA ABAJO DEL TODO) --- */
+.nav-bar {
+    position: fixed;
+    bottom: 0; left: 0; right: 0;
+    height: 70px;
+    background: rgba(5, 5, 5, 0.96);
+    border-top: 1px solid var(--border-color);
+    display: flex;
+    justify-content: space-around;
+    align-items: center;
+    z-index: 100;
+    padding-bottom: env(safe-area-inset-bottom);
+}
+
+.nav-item {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 4px;
+    color: var(--text-muted);
+    cursor: pointer;
+    width: 33%;
+    height: 100%;
+    transition: color 0.2s ease;
+}
+
+.nav-icon {
+    font-size: 18px; /* Tamaño perfecto y elegante */
+    margin-bottom: 2px;
+    transition: transform 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
+
+.nav-label {
+    font-size: 11px;
+    font-weight: 500;
+}
+
+.nav-item.active {
+    color: var(--text-main);
+}
+
+.nav-item.active .nav-icon {
+    transform: scale(1.15);
+}
+/* --- NUEVO ENCABEZADO PREMIUM DE INICIO --- */
+.main-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-top: 15px;
+    margin-bottom: 25px;
+}
+
+.brand-logo {
+    font-size: 22px;
+    font-weight: 900;
+    letter-spacing: 4px;
+    color: var(--text-main);
+}
+
+.settings-btn {
+    background: transparent;
+    color: var(--text-main);
+    border: none;
+    font-size: 20px;
+    padding: 8px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: transform 0.2s ease, opacity 0.2s ease;
+}
+
+.settings-btn:active {
+    transform: rotate(45deg) scale(0.9); /* Gira levemente la tuerca al picarle */
+    opacity: 0.7;
+}
+
+/* --- BOTONES OVALADOS (FILTER CHIPS) STYLE YT MUSIC --- */
+.filter-chips {
+    display: flex;
+    gap: 8px;
+    overflow-x: auto; /* Permite deslizar los botones hacia los lados si no caben */
+    margin-bottom: 30px;
+    padding-bottom: 5px;
+    /* Oculta la barra de scroll en navegadores */
+    scrollbar-width: none; 
+}
+.filter-chips::-webkit-scrollbar {
+    display: none;
+}
+
+.chip {
+    background: #161616;
+    color: var(--text-main);
+    padding: 8px 16px;
+    border-radius: 20px; /* Forma de píldora óvalo */
+    font-size: 13px;
+    font-weight: 500;
+    white-space: nowrap;
+    cursor: pointer;
+    border: 1px solid var(--border-color);
+    transition: all 0.2s ease;
+}
+
+.chip:active {
+    transform: scale(0.95);
+}
+
+/* Estado de la píldora seleccionada */
+.chip.active {
+    background: var(--text-main);
+    color: #000;
+    font-weight: 600;
+    border-color: var(--text-main);
+}
+
+/* Título de la sección de portadas */
+.section-title {
+    font-size: 16px;
+    font-weight: 700;
+    margin-bottom: 15px;
+    color: var(--text-main);
+    letter-spacing: 0.3px;
+}
+/* --- DISEÑO DE LA VISTA DE BIBLIOTECA --- */
+.library-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.create-playlist-btn {
+    background: #141414;
+    color: var(--text-main);
+    border: 1px solid var(--border-color);
+    width: 42px;
+    height: 42px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 16px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.create-playlist-btn:active {
+    transform: scale(0.9) rotate(90deg); /* Efecto giro sutil al picarle */
+    background: #222;
+}
+
+/* Menú de carpetas fijas (Me gusta / Descargas) */
+.library-menu {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    margin-bottom: 20px;
+}
+
+.menu-item {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    background: var(--bg-surface);
+    padding: 14px;
+    border-radius: 14px;
+    border: 1px solid var(--border-color);
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.menu-item:active {
+    background: #121212;
+    transform: scale(0.99);
+}
+
+/* Contenedores redondos para los iconos del menú */
+.menu-icon-wrapper {
+    width: 44px;
+    height: 44px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 16px;
+}
+
+/* Colores personalizados estilo Apple/Spotify */
+.menu-icon-wrapper.likes {
+    background: rgba(255, 45, 85, 0.15); /* Rojo traslúcido */
+    color: #ff2d55;
+}
+
+.menu-icon-wrapper.downloads {
+    background: rgba(52, 199, 89, 0.15); /* Verde traslúcido */
+    color: #34c759;
+}
+
+.menu-text {
+    flex: 1;
+}
+
+.menu-title {
+    font-size: 15px;
+    font-weight: 600;
+    color: var(--text-main);
+}
+
+.menu-desc {
+    font-size: 12px;
+    color: var(--text-muted);
+    margin-top: 2px;
+}
+
+.arrow-icon {
+    color: #2c2c2e;
+    font-size: 12px;
+}
+
+/* Estado vacío de Playlists */
+.empty-state {
+    text-align: center;
+    padding: 40px 20px;
+    color: #3a3a3c;
+}
+
+.empty-state i {
+    font-size: 48px;
+    margin-bottom: 15px;
+}
+
+.empty-state p {
+    font-size: 13px;
+    line-height: 1.5;
+    margin: 0;
+}
+/* ================= REPRODUCTOR COMPLETO (PANTALLA COMPLETA) ================= */
+.full-player {
+    position: fixed;
+    top: 0; left: 0; right: 0; bottom: 0;
+    background: #000000;
+    z-index: 200; /* Por encima de todo, incluso de la nav-bar */
+    transform: translateY(100%); /* Escondido abajo por defecto */
+    transition: transform 0.4s cubic-bezier(0.25, 1, 0.5, 1);
+    padding: 24px;
+    display: flex;
+    flex-direction: column;
+}
+
+/* Cuando se le agrega la clase .open, sube a pantalla completa */
+.full-player.open {
+    transform: translateY(0);
+}
+
+.close-player-btn {
+    background: transparent;
+    color: var(--text-muted);
+    border: none;
+    font-size: 22px;
+    align-self: flex-start;
+    padding: 10px 5px;
+    cursor: pointer;
+}
+.close-player-btn:active {
+    transform: scale(0.9);
+}
+
+.full-player-content {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    padding-bottom: 60px;
+}
+
+/* Portada gigante estilo Apple Music */
+.full-player-cover {
+    width: 85%;
+    max-width: 320px;
+    aspect-ratio: 1;
+    object-fit: cover;
+    border-radius: 24px;
+    box-shadow: 0 16px 40px rgba(0,0,0,0.8);
+    margin-bottom: 40px;
+}
+
+.full-player-meta {
+    width: 100%;
+    text-align: left;
+    padding: 0 20px;
+    margin-bottom: 25px;
+}
+
+.full-player-title {
+    font-size: 22px;
+    font-weight: 800;
+    color: var(--text-main);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.full-player-artist {
+    font-size: 16px;
+    color: var(--text-muted);
+    margin-top: 4px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+/* --- BARRA DE PROGRESO --- */
+.progress-container {
+    width: 100%;
+    padding: 0 20px;
+    margin-bottom: 35px;
+}
+
+.progress-bar {
+    width: 100%;
+    height: 4px;
+    background: #1a1a1a;
+    border-radius: 2px;
+    position: relative;
+    cursor: pointer;
+}
+
+.progress-current {
+    height: 100%;
+    background: var(--text-main);
+    border-radius: 2px;
+}
+
+.progress-time {
+    display: flex;
+    justify-content: space-between;
+    font-size: 11px;
+    color: var(--text-muted);
+    margin-top: 8px;
+}
+
+/* --- CONTROLES DE AUDIO --- */
+.full-player-controls {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    width: 100%;
+    padding: 0 10px;
+}
+
+.ctrl-btn {
+    background: transparent;
+    border: none;
+    color: var(--text-main);
+    font-size: 20px;
+    cursor: pointer;
+}
+
+.ctrl-btn.prev-next {
+    font-size: 26px;
+}
+
+.ctrl-btn-play {
+    background: var(--text-main);
+    color: #000;
+    border: none;
+    width: 64px;
+    height: 64px;
+    border-radius: 50%;
+    font-size: 22px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    box-shadow: 0 8px 20px rgba(255,255,255,0.1);
+    transition: transform 0.1s ease;
+}
+
+.ctrl-btn-play:active {
+    transform: scale(0.92);
+}
+
+.ctrl-btn-play i {
+    color: #000;
+}
+
+/* ================= PANEL DE PERFIL DE ARTISTA ================= */
+.artist-profile-panel {
+    position: fixed;
+    top: 0; left: 0; right: 0; bottom: 0;
+    background: #050505;
+    z-index: 150; /* Por debajo del full-player pero arriba de las vistas */
+    transform: translateX(100%); /* Desplazamiento lateral tipo Android/iOS */
+    transition: transform 0.35s cubic-bezier(0.32, 0.94, 0.6, 1);
+    display: flex;
+    flex-direction: column;
+}
+
+/* Al activarse se desliza desde la derecha */
+.artist-profile-panel.open {
+    transform: translateX(0);
+}
+
+.artist-panel-header {
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 60px;
+    display: flex;
+    align-items: center;
+    padding: 0 16px;
+    z-index: 10;
+}
+
+.back-panel-btn {
+    background: rgba(0, 0, 0, 0.5);
+    color: var(--text-main);
+    border: none;
+    width: 38px;
+    height: 38px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 16px;
+    cursor: pointer;
+    backdrop-filter: blur(8px);
+}
+
+.artist-panel-content {
+    flex: 1;
+    overflow-y: auto;
+    padding-bottom: 90px; /* Espacio para que la mini barra no tape nada */
+}
+
+/* Banner de presentación masiva */
+.artist-banner {
+    width: 100%;
+    height: 260px;
+    background-size: cover;
+    background-position: center;
+    position: relative;
+}
+
+.artist-banner-overlay {
+    position: absolute;
+    top: 0; left: 0; right: 0; bottom: 0;
+    background: linear-gradient(to bottom, transparent 40%, #050505 100%);
+    display: flex;
+    align-items: flex-end;
+    padding: 20px 16px;
+}
+
+.artist-panel-name {
+    font-size: 32px;
+    font-weight: 900;
+    color: var(--text-main);
+    letter-spacing: -0.5px;
+    margin: 0;
+}
+
+/* Barra de acciones rápidas */
+.artist-action-bar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 12px 16px;
+}
+
+.artist-stats {
+    font-size: 13px;
+    color: var(--text-muted);
+}
+.artist-stats span {
+    color: var(--text-main);
+    font-weight: 600;
+}
+
+.artist-play-btn {
+    background: var(--text-main);
+    color: #000;
+    border: none;
+    width: 50px;
+    height: 50px;
+    border-radius: 50%;
+    font-size: 18px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    box-shadow: 0 4px 12px rgba(255,255,255,0.1);
+}
+.artist-play-btn:active {
+    transform: scale(0.92);
+}
+.artist-play-btn i {
+    color: #000;
+    margin-left: 2px; /* Alineación óptica del triángulo play */
+}
+
+/* Estilos extra para la lista del artista */
+.artist-top-tracks {
+    display: flex;
+    flex-direction: column;
+}
+/* ================= PANEL DE CONFIGURACIÓN / AJUSTES ================= */
+.config-panel {
+    position: fixed;
+    top: 0; left: 0; right: 0; bottom: 0;
+    background: #050505;
+    z-index: 140; /* Justo abajo del reproductor gigante pero arriba de las vistas normales */
+    transform: translateX(100%);
+    transition: transform 0.35s cubic-bezier(0.32, 0.94, 0.6, 1);
+    display: flex;
+    flex-direction: column;
+}
+
+.config-panel.open {
+    transform: translateX(0);
+}
+
+.config-header {
+    height: 60px;
+    display: flex;
+    align-items: center;
+    padding: 0 16px;
+    border-bottom: 1px solid #141414;
+}
+
+.config-header-title {
+    font-size: 18px;
+    font-weight: 700;
+    color: var(--text-main);
+    margin-left: 16px;
+}
+
+.config-content {
+    flex: 1;
+    overflow-y: auto;
+    padding: 16px 0 100px 0; /* Margen abajo para que no estorbe al mini player */
+}
+
+.config-section {
+    margin-bottom: 24px;
+}
+
+.config-section-title {
+    font-size: 13px;
+    font-weight: 700;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    padding: 0 16px 8px 16px;
+}
+
+.config-item {
+    display: flex;
+    align-items: center;
+    padding: 12px 16px;
+    background: transparent;
+    cursor: pointer;
+    transition: background 0.2s ease;
+}
+.config-item:not(.no-click):active {
+    background: #141414;
+}
+
+.config-item-icon {
+    width: 32px;
+    font-size: 18px;
+    color: var(--text-muted);
+    display: flex;
+    align-items: center;
+}
+
+.config-item-text {
+    flex: 1;
+    padding-right: 12px;
+}
+
+.config-title {
+    font-size: 15px;
+    font-weight: 500;
+    color: var(--text-main);
+}
+
+.config-desc {
+    font-size: 12px;
+    color: var(--text-muted);
+    margin-top: 2px;
+    line-height: 1.4;
+}
+
+/* Selector Premium en línea */
+.config-select {
+    background: #141414;
+    color: var(--text-main);
+    border: 1px solid #222;
+    padding: 6px 10px;
+    border-radius: 8px;
+    font-size: 13px;
+    outline: none;
+}
+
+/* Switch Deslizable estilo HyperOS/iOS */
+.switch-container {
+    position: relative;
+    display: inline-block;
+    width: 44px;
+    height: 24px;
+}
+.switch-container input { display: none; }
+
+.slider-switch {
+    position: absolute;
+    cursor: pointer;
+    top: 0; left: 0; right: 0; bottom: 0;
+    background-color: #333;
+    transition: .3s;
+    border-radius: 24px;
+}
+.slider-switch:before {
+    position: absolute;
+    content: "";
+    height: 18px;
+    width: 18px;
+    left: 3px;
+    bottom: 3px;
+    background-color: white;
+    transition: .3s;
+    border-radius: 50%;
+}
+input:checked + .slider-switch {
+    background-color: var(--text-main); /* Usará tu color principal de acento */
+}
+input:checked + .slider-switch:before {
+    transform: translateX(20px);
+    background-color: #000;
+}
+
