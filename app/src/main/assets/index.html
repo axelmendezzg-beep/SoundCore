@@ -23,6 +23,13 @@
         .fp-individual-artist:hover {
             text-decoration: underline;
         }
+        
+        /* Ajuste de área segura para librar la hora y barra de estado en pantalla completa */
+        .artist-panel-header {
+            padding-top: 45px !important; /* Baja el botón de regresar para evitar conflictos con el reloj */
+            display: flex;
+            align-items: center;
+        }
     </style>
 </head>
 <body>
@@ -311,7 +318,6 @@
             }
         }
 
-        // RECEPTOR DE BUSQUEDA: Ahora todo el renglón es un botón directo de play sin links internos
         function onSearchTracksResultEncoded(base64JsonString) {
             var contenedor = document.getElementById('resultados');
             try {
@@ -329,7 +335,6 @@
                     div.className = 'track-item';
                     div.style.cursor = 'pointer';
                     
-                    // Al hacer clic en cualquier parte del renglón, reproduce directo
                     div.onclick = function() { 
                         lanzarReproduccionNativa(track.title, track.artist, track.thumbnail, track.id, track.artistBrowseId || ""); 
                     };
@@ -353,7 +358,6 @@
             lanzarReproduccionNativa(titulo, artista, foto, videoId, "");
         }
 
-        // REPRODUCCIÓN NATIVA: Mapea la separación de los artistas únicamente en el Full Player
         function lanzarReproduccionNativa(titulo, artista, foto, videoId, artistBrowseId) {
             browseIdArtistaActual = artistBrowseId;
 
@@ -369,7 +373,6 @@
 
             document.getElementById('fpTitle').innerText = titulo;
             
-         // Lógica de separación de artistas limpia movida exclusivamente al Full Player
             var fpArtistContainer = document.getElementById('fpArtist');
             fpArtistContainer.innerHTML = "";
 
@@ -377,14 +380,17 @@
                 var artistasArray = artista.split(",");
                 artistasArray.forEach(function(art, index) {
                     var nombreLimpio = art.trim();
+                    // Solo el primer artista se queda con el browseId real enviado por el puente
                     var bid = (index === 0) ? (browseIdArtistaActual || "") : "";
                     
                     var span = document.createElement('span');
                     span.className = 'fp-individual-artist';
                     span.innerText = nombreLimpio;
+                    
                     span.onclick = function(e) {
                         e.stopPropagation();
                         cerrarFullPlayer();
+                        // CORRECCIÓN: Si es un colaborador secundario sin ID, salta directamente al buscador estático por nombre
                         if (bid !== "") {
                             abrirArtistPanelReal(bid, nombreLimpio);
                         } else {
