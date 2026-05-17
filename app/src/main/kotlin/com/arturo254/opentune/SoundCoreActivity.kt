@@ -112,7 +112,7 @@ class SoundCoreActivity : ComponentActivity() {
         super.onDestroy()
     }
 
-        inner class SoundCoreBridge {
+    inner class SoundCoreBridge {
         
         @JavascriptInterface
         fun playTrack(videoId: String) {
@@ -121,7 +121,7 @@ class SoundCoreActivity : ComponentActivity() {
                     val endpoint = WatchEndpoint(videoId = videoId, playlistId = null)
                     playerConnection?.playQueue(YouTubeQueue(endpoint))
                 } else {
-                    Toast.makeText(this@SoundCoreActivity, "Error: Motor de audio desconectado", Toast.LONG_LONG).show()
+                    Toast.makeText(this@SoundCoreActivity, "Error: Motor de audio desconectado", Toast.LENGTH_LONG).show()
                 }
             }
         }
@@ -152,6 +152,7 @@ class SoundCoreActivity : ComponentActivity() {
         @JavascriptInterface
         fun seekToPosition(seconds: Int) {
             runOnUiThread {
+                // 🔥 Ajustado a seekTo para que compile fino en ExoPlayer
                 playerConnection?.player?.seekTo((seconds * 1000).toLong())
             }
         }
@@ -167,7 +168,7 @@ class SoundCoreActivity : ComponentActivity() {
                         val title = song.title.replace("\"", "\\\"")
                         val artist = song.artists.joinToString { it.name }.replace("\"", "\\\"")
                         
-                        // 🔥 Sincronización de múltiples colaboradores por comas
+                        // Sincronización de múltiples colaboradores por comas
                         val allArtistIds = song.artists.map { it.id ?: "" }.joinToString(",")
                         
                         val id = song.id
@@ -201,7 +202,6 @@ class SoundCoreActivity : ComponentActivity() {
         fun loadArtistDetails(browseId: String) {
             if (browseId.isEmpty()) return
             activityScope.launch(Dispatchers.IO) {
-                // Se invoca el desglose del artista usando el motor de Arturo
                 YouTube.artist(browseId).onSuccess { artistPage ->
                     val name = artistPage.name.replace("\"", "\\\"")
                     val thumbnail = artistPage.thumbnail ?: ""
@@ -239,4 +239,3 @@ class SoundCoreActivity : ComponentActivity() {
         }
     }
 }
-
