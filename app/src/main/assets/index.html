@@ -287,8 +287,7 @@
             <span class="nav-label">Biblioteca</span>
         </div>
     </nav>
-
-    <script>
+<script>
         var duracionCancionActual = 0;
         var browseIdArtistaActual = "";
 
@@ -358,6 +357,7 @@
             lanzarReproduccionNativa(titulo, artista, foto, videoId, "");
         }
 
+        // REPRODUCCIÓN NATIVA: Mapea y sincroniza múltiples IDs con múltiples colaboradores
         function lanzarReproduccionNativa(titulo, artista, foto, videoId, artistBrowseId) {
             browseIdArtistaActual = artistBrowseId;
 
@@ -376,12 +376,15 @@
             var fpArtistContainer = document.getElementById('fpArtist');
             fpArtistContainer.innerHTML = "";
 
+            // Convertimos la cadena de IDs que viene de la lista separada por comas de Kotlin en un array real
+            var idsArray = artistBrowseId ? artistBrowseId.split(",") : [];
+
             if (artista.includes(",")) {
                 var artistasArray = artista.split(",");
                 artistasArray.forEach(function(art, index) {
                     var nombreLimpio = art.trim();
-                    // Solo el primer artista se queda con el browseId real enviado por el puente
-                    var bid = (index === 0) ? (browseIdArtistaActual || "") : "";
+                    // Extrae el ID correspondiente de la misma posición de este artista
+                    var bid = idsArray[index] ? idsArray[index].trim() : "";
                     
                     var span = document.createElement('span');
                     span.className = 'fp-individual-artist';
@@ -390,7 +393,7 @@
                     span.onclick = function(e) {
                         e.stopPropagation();
                         cerrarFullPlayer();
-                        // CORRECCIÓN: Si es un colaborador secundario sin ID, salta directamente al buscador estático por nombre
+                        // Si existe un ID nativo cargado desde Kotlin para este colaborador, entra a su radar real
                         if (bid !== "") {
                             abrirArtistPanelReal(bid, nombreLimpio);
                         } else {
@@ -410,8 +413,9 @@
                 span.onclick = function(e) {
                     e.stopPropagation();
                     cerrarFullPlayer();
-                    if (browseIdArtistaActual && browseIdArtistaActual !== "") {
-                        abrirArtistPanelReal(browseIdArtistaActual, artista);
+                    var primerId = idsArray[0] ? idsArray[0].trim() : "";
+                    if (primerId !== "") {
+                        abrirArtistPanelReal(primerId, artista);
                     } else {
                         abrirArtistPanel(artista);
                     }
@@ -618,6 +622,6 @@
             `;
             container.appendChild(div);
         }
-    </script>
+</script>
 </body>
 </html>

@@ -20,7 +20,7 @@ import com.arturo254.opentune.playback.queues.YouTubeQueue
 import com.arturo254.opentune.innertube.models.WatchEndpoint
 import com.arturo254.opentune.innertube.YouTube
 import com.arturo254.opentune.innertube.models.SongItem
-import com.arturo254.opentune.innertube.models.AlbumItem
+import com.arturo254.opentune.innertube.models.ArtistItem
 import com.arturo254.opentune.db.MusicDatabase
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.*
@@ -166,6 +166,7 @@ class SoundCoreActivity : ComponentActivity() {
                     songs.forEachIndexed { index, song ->
                         val title = song.title.replace("\"", "\\\"")
                         val artist = song.artists.joinToString { it.name }.replace("\"", "\\\"")
+                        // Jalar el browseId del primer artista mapeado para guardarlo en la UI de búsqueda
                         val artistBrowseId = song.artists.firstOrNull()?.id ?: ""
                         val id = song.id
                         val thumbnail = song.thumbnail ?: ""
@@ -193,60 +194,76 @@ class SoundCoreActivity : ComponentActivity() {
             }
         }
 
-              @JavascriptInterface
+        // --- 🎤 NUEVO MÉTODO NATIVO: CARGAR PERFIL DE ARTISTA DESDE YT ---
+        @        @JavascriptInterface
+        fun searchTracks(query: String) {
+            activityScope.launch(Dispatchers.IO) {
+                YouTube.search(query, YouTube.SearchFilter.FILTER_SONG).onSuccess { searchResult ->
+                    val songs = searchResult.items.filterIsInstance<SongItem>()
+                    
+                    val jsonBuilder = StringBuilder("[")
+                    songs.forEachIndexed { index, song ->
+                        val title = song.title.replace("\"", "\\\"")
+                        val artist = song.artists.joinToString { it.name }.replace("\"", "\\\"")
+                        
+                        // 🔥 CORRECCIÓN AQUÍ: Jalar los IDs de TODOS los artistas colaboradores separados por comas
+                        val allArtistIds = song.artists.map { it.id ?: "" }.joinToString(",")
+                        
+                        val id = song.id
+                        val thumbnail = song.thumbnail ?: ""
+
+                        jsonBuilder.append("{")
+                            .append("\"id\":\"$id\",")
+                            .append("\"title\":\"$title\",")
+                            .append("\"artist\":\"$artist\",")
+                            .append("\"artistBrowseId\":\"$allArtistIds\",") // Mandamos la lista de IDs a JS
+                            .append("\"thumbnail\":\"$thumbnail\"")
+                            .append("}")
+                        if (index < songs.size - 1) jsonBuilder.append(",")
+                    }
+                    jsonBuilder.append("]")
+                    
+                    val base64Json = Base64.encodeToString(jsonBuilder.toString().toByteArray(Charsets.UTF_8), Base64.NO_WRAP)
+                    runOnUiThread {
+                        webView.loadUrl("javascript:onSearchTracksResultEncoded('$base64Json')")
+                    }
+                }.onFailure { error ->
+                    runOnUiThread {
+                        Toast.makeText(this@SoundCoreActivity, "Fallo en el radar nativo: ${error.message}", Toast.LENGTH_SHORT).show()
+                    }
+                }
+            }
+        }
+
+        // --- 🎤 NUEVO MÉTODO NATIVO: CARGAR PERFIL DE ARTISTA DESDE YT ---
+        @JavascriptInterface
         fun loadArtistDetails(browseId: String) {
             if (browseId.isEmpty()) return
             activityScope.launch(Dispatchers.IO) {
+                // Se invoca el desglose del artista usando el motor de Arturo
                 YouTube.artist(browseId).onSuccess { artistPage ->
-                    // 1. Extraemos los datos principales del artista de forma segura
-                    val artistName = artistPage.artist.title.replace("\"", "\\\"")
-                    val artistPic = artistPage.artist.thumbnail ?: ""
-
-                    // 2. Clasificamos los ítems de las secciones (Canciones vs Álbumes)
-                    val allItems = artistPage.sections.flatMap { it.items }
-                    val songItems = allItems.filterIsInstance<SongItem>()
-                    val albumItems = allItems.filterIsInstance<AlbumItem>()
-
-                    // 3. Construimos el JSON manualmente evitando caracteres de escape rotos
-                    val jsonBuilder = StringBuilder("{")
+                    val name = artistPage.name.replace("\"", "\\\"")
+                    val thumbnail = artistPage.thumbnail ?: ""
                     
-                    // Metemos metadatos del artista en la raíz del JSON para el index.html
-                    jsonBuilder.append("\"name\":\"$artistName\",")
-                    jsonBuilder.append("\"thumbnail\":\"$artistPic\",")
-
-                    // Serializamos el arreglo de canciones (tracks)
-                    jsonBuilder.append("\"tracks\":[")
+                    // Extraemos las canciones destacadas mapeadas dentro de su sección
+                    val tracksJsonBuilder = StringBuilder("[")
+                    val songItems = artistPage.sections.flatMap { it.items }.filterIsInstance<SongItem>()
+                    
                     songItems.forEachIndexed { index, song ->
                         val tTitle = song.title.replace("\"", "\\\"")
                         val tArtist = song.artists.joinToString { it.name }.replace("\"", "\\\"")
-                        jsonBuilder.append("{")
+                        tracksJsonBuilder.append("{")
                             .append("\"id\":\"${song.id}\",")
                             .append("\"title\":\"$tTitle\",")
                             .append("\"artist\":\"$tArtist\",")
-                            .append("\"thumbnail\":\"${song.thumbnail}\"")
+                            .append("\"thumbnail\":\"${song.thumbnail ?: ""}\"")
                             .append("}")
-                        if (index < songItems.size - 1) jsonBuilder.append(",")
+                        if (index < songItems.size - 1) tracksJsonBuilder.append(",")
                     }
-                    jsonBuilder.append("],")
+                    tracksJsonBuilder.append("]")
 
-                    // Serializamos el arreglo de álbumes (albums) por si tu HTML los renderiza abajo
-                    jsonBuilder.append("\"albums\":[")
-                    albumItems.forEachIndexed { index, album ->
-                        val aTitle = album.title.replace("\"", "\\\"")
-                        jsonBuilder.append("{")
-                            .append("\"browseId\":\"${album.browseId}\",")
-                            .append("\"playlistId\":\"${album.playlistId}\",")
-                            .append("\"title\":\"$aTitle\",")
-                            .append("\"year\":${album.year ?: "null"},")
-                            .append("\"thumbnail\":\"${album.thumbnail}\"")
-                            .append("}")
-                        if (index < albumItems.size - 1) jsonBuilder.append(",")
-                    }
-                    jsonBuilder.append("]")
-                    jsonBuilder.append("}")
-
-                    // 4. Codificamos a Base64 para que el WebView no rompa caracteres especiales latinos o emojis
-                    val finalJson = jsonBuilder.toString()
+                    // Armamos el paquete JSON de respuesta completa del artista
+                    val finalJson = "{\"name\":\"$name\",\"thumbnail\":\"$thumbnail\",\"tracks\":$tracksJsonBuilder}"
                     val base64Json = Base64.encodeToString(finalJson.toByteArray(Charsets.UTF_8), Base64.NO_WRAP)
                     
                     runOnUiThread {
