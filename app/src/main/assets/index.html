@@ -267,6 +267,9 @@
         // Guardamos la duración global de la canción actual para operaciones de salto
         var duracionCancionActual = 0;
 
+        // Variable global para almacenar el browseId del artista en reproducción activa
+        var browseIdArtistaActual = "";
+
         // Función mágica para decodificar Base64 con UTF-8 de forma segura (Tildes y Ñs resueltas)
         function decodeBase64Utf8(base64) {
             return decodeURIComponent(Array.prototype.map.call(atob(base64), function(c) {
@@ -313,13 +316,13 @@
                     var div = document.createElement('div');
                     div.className = 'track-item';
                     div.onclick = function() { 
-                        lanzarReproduccionNativa(track.title, track.artist, track.thumbnail, track.id); 
+                        lanzarReproduccionNativa(track.title, track.artist, track.thumbnail, track.id, track.artistBrowseId || ""); 
                     };
                     div.innerHTML = `
                         <img src="${track.thumbnail}" alt="cover" onerror="this.src='https://placehold.co/50x50/111/fff?text=Music'">
                         <div class="track-info">
                             <div class="track-title">${track.title}</div>
-                            <div class="track-artist">${track.artist}</div>
+                            <div class="track-artist" style="cursor: pointer; color: var(--text-muted);" onclick="event.stopPropagation(); abrirArtistPanelReal('${track.artistBrowseId || ''}', '${track.artist.replace(/'/g, "\\'")}')">${track.artist}</div>
                         </div>
                         <i class="fa-solid fa-play" style="color:var(--text-muted); font-size:12px; margin-right:10px;"></i>
                     `;
@@ -331,11 +334,15 @@
         }
 
         function reproducirSugerida(titulo, artista, foto, videoId) {
-            lanzarReproduccionNativa(titulo, artista, foto, videoId);
+            // Las sugeridas de inicio no traen browseId por defecto, pasamos vacío para usar fallback estático
+            lanzarReproduccionNativa(titulo, artista, foto, videoId, "");
         }
 
         // CONTROL CENTRAL DE REPRODUCCIÓN: Actualiza interfaz y le manda el id de la rola a Android
-        function lanzarReproduccionNativa(titulo, artista, foto, videoId) {
+        function lanzarReproduccionNativa(titulo, artista, foto, videoId, artistBrowseId) {
+            // Guardamos el browseId en memoria para cuando den clic al nombre del artista en el Full Player
+            browseIdArtistaActual = artistBrowseId;
+
             document.getElementById('pTitle').innerText = titulo;
             document.getElementById('pArtist').innerText = artista;
             document.getElementById('pThumb').src = foto;
@@ -350,9 +357,14 @@
             document.getElementById('fpArtist').innerText = artista;
             document.getElementById('fpThumb').src = foto;
 
+            // Al dar clic al artista en el reproductor completo, valida si hay ID dinámico o usa el estático
             document.getElementById('fpArtist').onclick = function() {
                 cerrarFullPlayer();
-                abrirArtistPanel(artista);
+                if (browseIdArtistaActual && browseIdArtistaActual !== "") {
+                    abrirArtistPanelReal(browseIdArtistaActual, artista);
+                } else {
+                    abrirArtistPanel(artista);
+                }
             };
 
             setPlaybackState(true);
@@ -381,7 +393,7 @@
             }
         }
 
-        // Recibe el estado real del reproductor nativo
+      // Recibe el estado real del reproductor nativo
         function setPlaybackState(isPlaying) {
             var btnMini = document.getElementById('pBtn');
             var btnFull = document.getElementById('fpBtn');
@@ -445,6 +457,7 @@
             "Cartel de Santa": { banner: "https://images.unsplash.com/photo-1524368535928-5b5e00ddc76b?q=80&w=600", listeners: "12,310,450" }
         };
 
+        // Panel Estático Fallback (Mantiene el funcionamiento clásico si no hay internet o ID)
         function abrirArtistPanel(nombreArtista) {
             const panel = document.getElementById('artistPanel');
             const data = infoArtistas[nombreArtista] || { banner: "https://images.unsplash.com/photo-1501386761578-eac5c94b800a?q=80&w=600", listeners: "1,200,500" };
@@ -457,6 +470,66 @@
             container.innerHTML = `<p style="color:var(--text-muted); padding:16px; font-size:13px;">Buscando lanzamientos populares del artista...</p>`;
             
             panel.classList.add('open');
+        }
+
+        // NUEVA FUNCIÓN: Dispara la solicitud del canal real del artista a InnerTube a través de Kotlin
+        function abrirArtistPanelReal(browseId, nombreArtista) {
+            if (!browseId || browseId === "") {
+                abrirArtistPanel(nombreArtista);
+                return;
+            }
+            var panel = document.getElementById('artistPanel');
+            document.getElementById('apName').innerText = nombreArtista;
+            document.getElementById('apBanner').style.backgroundImage = "none";
+            document.getElementById('apListeners').innerText = "Cargando radar...";
+            
+            var container = document.getElementById('artistTracksContainer');
+            container.innerHTML = "<p style='color:var(--text-muted); text-align:center; padding-top:40px;'>Cargando discografía real... 📡</p>";
+            
+            panel.classList.add('open');
+
+            if (typeof SoundCoreBridge !== "undefined") {
+                SoundCoreBridge.loadArtistDetails(browseId);
+            }
+        }
+
+        // NUEVO RECEPTOR: Procesa el Base64 que manda la Activity con los temas top del artista desde YT
+        function onArtistDetailsResultEncoded(base64Json) {
+            try {
+                var data = JSON.parse(decodeBase64Utf8(base64Json));
+                document.getElementById('apName').innerText = data.name;
+                if(data.thumbnail) {
+                    document.getElementById('apBanner').style.backgroundImage = `url('${data.thumbnail}')`;
+                }
+                document.getElementById('apListeners').innerText = "Perfil Oficial de InnerTube";
+                
+                var container = document.getElementById('artistTracksContainer');
+                container.innerHTML = "";
+                
+                if(!data.tracks || data.tracks.length === 0) {
+                    container.innerHTML = "<p style='color:var(--text-muted); padding:16px; font-size:13px;'>No se encontraron lanzamientos disponibles.</p>";
+                    return;
+                }
+
+                data.tracks.forEach(function(track) {
+                    var div = document.createElement('div');
+                    div.className = 'track-item';
+                    div.onclick = function() { 
+                        lanzarReproduccionNativa(track.title, track.artist, track.thumbnail, track.id, ""); 
+                    };
+                    div.innerHTML = `
+                        <img src="${track.thumbnail}" style="width:44px; height:44px; border-radius:6px; margin-right:12px; object-fit:cover;" onerror="this.src='https://placehold.co/50x50/111/fff?text=Music'">
+                        <div class="track-info">
+                            <div class="track-title" style="font-size:14px; font-weight:500;">${track.title}</div>
+                            <div class="track-artist" style="font-size:12px; color:var(--text-muted);">${track.artist}</div>
+                        </div>
+                        <i class="fa-solid fa-play" style="color:var(--text-muted); font-size:11px; margin-right:10px;"></i>
+                    `;
+                    container.appendChild(div);
+                });
+            } catch(e) {
+                document.getElementById('artistTracksContainer').innerHTML = `<p style='color:#ff5555; padding:16px;'>Error al mapear discografía: ${e.message}</p>`;
+            }
         }
 
         function cerrarArtistPanel() {
@@ -487,6 +560,6 @@
             `;
             container.appendChild(div);
         }
-    </script>
+</script>
 </body>
 </html>

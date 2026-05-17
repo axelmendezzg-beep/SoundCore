@@ -20,6 +20,7 @@ import com.arturo254.opentune.playback.queues.YouTubeQueue
 import com.arturo254.opentune.innertube.models.WatchEndpoint
 import com.arturo254.opentune.innertube.YouTube
 import com.arturo254.opentune.innertube.models.SongItem
+import com.arturo254.opentune.innertube.models.ArtistItem
 import com.arturo254.opentune.db.MusicDatabase
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.*
@@ -48,14 +49,12 @@ class SoundCoreActivity : ComponentActivity() {
                     Toast.makeText(this@SoundCoreActivity, "¡Sistemas nativos acoplados! 🏎️", Toast.LENGTH_SHORT).show()
                 }
 
-                // 📡 Hilo 1: Escucha si pausaste o le diste play desde fuera de la app o barra de notificaciones
                 activityScope.launch {
                     conn.isPlaying.collectLatest { playing ->
                         webView.loadUrl("javascript:setPlaybackState($playing)")
                     }
                 }
 
-                // 🕒 Hilo 2: Activa el reloj que manda los segundos reales a tu barra de progreso
                 startProgressTracker()
             }
         }
@@ -84,7 +83,6 @@ class SoundCoreActivity : ComponentActivity() {
         bindService(Intent(this, MusicService::class.java), serviceConnection, Context.BIND_AUTO_CREATE)
     }
 
-    // Monitorea el segundo exacto del reproductor de Arturo cada 1000 milisegundos
     private fun startProgressTracker() {
         progressJob?.cancel()
         progressJob = activityScope.launch(Dispatchers.Main) {
@@ -128,8 +126,6 @@ class SoundCoreActivity : ComponentActivity() {
             }
         }
 
-        // --- 🎛️ NUEVOS PUENTES: CONTROLES REALES DE AUDIO ---
-        
         @JavascriptInterface
         fun togglePlayPause() {
             runOnUiThread {
@@ -170,6 +166,8 @@ class SoundCoreActivity : ComponentActivity() {
                     songs.forEachIndexed { index, song ->
                         val title = song.title.replace("\"", "\\\"")
                         val artist = song.artists.joinToString { it.name }.replace("\"", "\\\"")
+                        // Jalar el browseId del primer artista mapeado para guardarlo en la UI de búsqueda
+                        val artistBrowseId = song.artists.firstOrNull()?.id ?: ""
                         val id = song.id
                         val thumbnail = song.thumbnail ?: ""
 
@@ -177,21 +175,62 @@ class SoundCoreActivity : ComponentActivity() {
                             .append("\"id\":\"$id\",")
                             .append("\"title\":\"$title\",")
                             .append("\"artist\":\"$artist\",")
+                            .append("\"artistBrowseId\":\"$artistBrowseId\",")
                             .append("\"thumbnail\":\"$thumbnail\"")
                             .append("}")
                         if (index < songs.size - 1) jsonBuilder.append(",")
                     }
                     jsonBuilder.append("]")
-                    val finalJson = jsonBuilder.toString()
                     
-                    val base64Json = Base64.encodeToString(finalJson.toByteArray(Charsets.UTF_8), Base64.NO_WRAP)
-
+                    val base64Json = Base64.encodeToString(jsonBuilder.toString().toByteArray(Charsets.UTF_8), Base64.NO_WRAP)
                     runOnUiThread {
                         webView.loadUrl("javascript:onSearchTracksResultEncoded('$base64Json')")
                     }
                 }.onFailure { error ->
                     runOnUiThread {
                         Toast.makeText(this@SoundCoreActivity, "Fallo en el radar nativo: ${error.message}", Toast.LENGTH_SHORT).show()
+                    }
+                }
+            }
+        }
+
+        // --- 🎤 NUEVO MÉTODO NATIVO: CARGAR PERFIL DE ARTISTA DESDE YT ---
+        @JavascriptInterface
+        fun loadArtistDetails(browseId: String) {
+            if (browseId.isEmpty()) return
+            activityScope.launch(Dispatchers.IO) {
+                // Se invoca el desglose del artista usando el motor de Arturo
+                YouTube.artist(browseId).onSuccess { artistPage ->
+                    val name = artistPage.name.replace("\"", "\\\"")
+                    val thumbnail = artistPage.thumbnail ?: ""
+                    
+                    // Extraemos las canciones destacadas mapeadas dentro de su sección
+                    val tracksJsonBuilder = StringBuilder("[")
+                    val songItems = artistPage.sections.flatMap { it.items }.filterIsInstance<SongItem>()
+                    
+                    songItems.forEachIndexed { index, song ->
+                        val tTitle = song.title.replace("\"", "\\\"")
+                        val tArtist = song.artists.joinToString { it.name }.replace("\"", "\\\"")
+                        tracksJsonBuilder.append("{")
+                            .append("\"id\":\"${song.id}\",")
+                            .append("\"title\":\"$tTitle\",")
+                            .append("\"artist\":\"$tArtist\",")
+                            .append("\"thumbnail\":\"${song.thumbnail ?: ""}\"")
+                            .append("}")
+                        if (index < songItems.size - 1) tracksJsonBuilder.append(",")
+                    }
+                    tracksJsonBuilder.append("]")
+
+                    // Armamos el paquete JSON de respuesta completa del artista
+                    val finalJson = "{\"name\":\"$name\",\"thumbnail\":\"$thumbnail\",\"tracks\":$tracksJsonBuilder}"
+                    val base64Json = Base64.encodeToString(finalJson.toByteArray(Charsets.UTF_8), Base64.NO_WRAP)
+                    
+                    runOnUiThread {
+                        webView.loadUrl("javascript:onArtistDetailsResultEncoded('$base64Json')")
+                    }
+                }.onFailure { error ->
+                    runOnUiThread {
+                        Toast.makeText(this@SoundCoreActivity, "Error al procesar artista: ${error.message}", Toast.LENGTH_SHORT).show()
                     }
                 }
             }
