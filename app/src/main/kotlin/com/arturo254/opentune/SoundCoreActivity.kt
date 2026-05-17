@@ -7,6 +7,7 @@ import android.content.Intent
 import android.content.ServiceConnection
 import android.os.Bundle
 import android.os.IBinder
+import android.util.Base64
 import android.webkit.JavascriptInterface
 import android.webkit.WebView
 import android.webkit.WebViewClient
@@ -96,9 +97,7 @@ class SoundCoreActivity : ComponentActivity() {
         @JavascriptInterface
         fun searchTracks(query: String) {
             activityScope.launch(Dispatchers.IO) {
-                // Invocamos la búsqueda con el filtro exacto de Arturo
                 YouTube.search(query, YouTube.SearchFilter.FILTER_SONG).onSuccess { searchResult ->
-                    // Filtramos los items devueltos para quedarnos solo con los que sean SongItem
                     val songs = searchResult.items.filterIsInstance<SongItem>()
                     
                     val jsonBuilder = StringBuilder("[")
@@ -118,9 +117,14 @@ class SoundCoreActivity : ComponentActivity() {
                     }
                     jsonBuilder.append("]")
                     val finalJson = jsonBuilder.toString()
+                    
+                    // --- LA CURA MÁGICA ---
+                    // Encodeamos el JSON en Base64 para que las tildes y caracteres raros no rompan la tubería
+                    val base64Json = Base64.encodeToString(finalJson.toByteArray(Charsets.UTF_8), Base64.NO_WRAP)
 
                     runOnUiThread {
-                        webView.loadUrl("javascript:onSearchTracksResult('$finalJson')")
+                        // Le pasamos el paquete de Base64 al nuevo método de JavaScript
+                        webView.loadUrl("javascript:onSearchTracksResultEncoded('$base64Json')")
                     }
                 }.onFailure { error ->
                     runOnUiThread {

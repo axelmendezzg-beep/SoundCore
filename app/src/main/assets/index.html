@@ -5,16 +5,19 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>SoundCore Terminal</title>
     <style>
-        body { background-color: #000; color: #fff; font-family: sans-serif; padding: 20px; margin: 0; }
-        h1 { text-align: center; letter-spacing: 2px; font-size: 24px; margin-top: 20px; margin-bottom: 20px; }
-        .search-box { display: flex; gap: 10px; margin-bottom: 20px; }
-        input { flex: 1; padding: 12px; border-radius: 8px; border: 1px solid #333; background: #111; color: #fff; font-size: 16px; }
-        button { padding: 12px 20px; border-radius: 8px; border: none; background: #fff; color: #000; font-weight: bold; cursor: pointer; }
-        .track-item { display: flex; align-items: center; gap: 15px; background: #111; padding: 10px; border-radius: 8px; margin-bottom: 10px; cursor: pointer; border: 1px solid #222; }
+        body { background-color: #000; color: #fff; font-family: sans-serif; padding: 20px; margin: 0; padding-bottom: 50px; }
+        h1 { text-align: center; letter-spacing: 2px; font-size: 24px; margin-top: 20px; margin-bottom: 20px; position: sticky; top: 0; background: #000; padding: 10px 0; z-index: 10; }
+        .search-box { display: flex; gap: 10px; margin-bottom: 20px; position: sticky; top: 70px; background: #000; padding: 10px 0; z-index: 10; }
+        input { flex: 1; padding: 12px; border-radius: 8px; border: 1px solid #333; background: #111; color: #fff; font-size: 16px; transition: border-color 0.3s; }
+        input:focus { border-color: #fff; outline: none; }
+        button { padding: 12px 20px; border-radius: 8px; border: none; background: #fff; color: #000; font-weight: bold; cursor: pointer; transition: opacity 0.3s; }
+        button:active { opacity: 0.7; }
+        .track-item { display: flex; align-items: center; gap: 15px; background: #111; padding: 10px; border-radius: 8px; margin-bottom: 10px; cursor: pointer; border: 1px solid #222; transition: background 0.3s, border-color 0.3s; }
+        .track-item:active { background: #222; border-color: #444; }
         .track-item img { width: 50px; height: 50px; border-radius: 6px; object-fit: cover; }
-        .track-info { flex: 1; }
-        .track-title { font-weight: bold; font-size: 14px; margin-bottom: 4px; color: #fff; }
-        .track-artist { color: #888; font-size: 12px; }
+        .track-info { flex: 1; min-width: 0; }
+        .track-title { font-weight: bold; font-size: 14px; margin-bottom: 4px; color: #fff; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .track-artist { color: #888; font-size: 12px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
     </style>
 </head>
 <body>
@@ -29,41 +32,57 @@
     <div id="resultados"></div>
 
     <script>
+        // Esta función decodifica UTF-8 desde Base64 de forma segura
+        function decodeBase64Utf8(base64) {
+            return decodeURIComponent(Array.prototype.map.call(atob(base64), function(c) {
+                return '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2);
+            }).join(''));
+        }
+
         function dispararBusqueda() {
             var query = document.getElementById('queryInput').value;
             if(query.trim() !== "") {
-                document.getElementById('resultados').innerHTML = "<p style='color:#888; text-align:center;'>Buscando en el motor nativo...</p>";
-                // Despertamos el radar de Kotlin
+                document.getElementById('resultados').innerHTML = "<p style='color:#888; text-align:center; padding-top: 50px;'>Buscando en el motor nativo...</p>";
                 SoundCoreBridge.searchTracks(query);
             }
         }
 
-        function onSearchTracksResult(jsonString) {
-            var tracks = JSON.parse(jsonString);
+        // LA NUEVA FUNCIÓN MÁGICA: Recibe Base64 y reconstruye el JSON real
+        function onSearchTracksResultEncoded(base64JsonString) {
             var contenedor = document.getElementById('resultados');
-            contenedor.innerHTML = "";
+            
+            try {
+                // Decodificamos el paquete Base64 para obtener el JSON original
+                var jsonString = decodeBase64Utf8(base64JsonString);
+                var tracks = JSON.parse(jsonString);
+                
+                contenedor.innerHTML = "";
 
-            if(tracks.length === 0) {
-                contenedor.innerHTML = "<p style='color:#888; text-align:center;'>No se encontraron rolas.</p>";
-                return;
+                if(tracks.length === 0) {
+                    contenedor.innerHTML = "<p style='color:#888; text-align:center; padding-top: 50px;'>No se encontraron rolas.</p>";
+                    return;
+                }
+
+                tracks.forEach(function(track) {
+                    var div = document.createElement('div');
+                    div.className = 'track-item';
+                    div.onclick = function() {
+                        SoundCoreBridge.playTrack(track.id);
+                    };
+
+                    div.innerHTML = `
+                        <img src="${track.thumbnail}" alt="cover" onerror="this.src='https://placehold.co/50x50/111/fff?text=Music'">
+                        <div class="track-info">
+                            <div class="track-title">${track.title}</div>
+                            <div class="track-artist">${track.artist}</div>
+                        </div>
+                    `;
+                    contenedor.appendChild(div);
+                });
+
+            } catch (error) {
+                contenedor.innerHTML = `<p style='color:#ff5555; text-align:center; padding-top: 50px;'>Fallo al desempaquetar datos: ${error.message}</p>`;
             }
-
-            tracks.forEach(function(track) {
-                var div = document.createElement('div');
-                div.className = 'track-item';
-                div.onclick = function() {
-                    SoundCoreBridge.playTrack(track.id);
-                };
-
-                div.innerHTML = `
-                    <img src="${track.thumbnail}" alt="cover" onerror="this.src='https://placehold.co/50x50/111/fff?text=Music'">
-                    <div class="track-info">
-                        <div class="track-title">${track.title}</div>
-                        <div class="track-artist">${track.artist}</div>
-                    </div>
-                `;
-                contenedor.appendChild(div);
-            });
         }
     </script>
 </body>
