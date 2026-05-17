@@ -112,7 +112,7 @@ class SoundCoreActivity : ComponentActivity() {
         super.onDestroy()
     }
 
-    inner class SoundCoreBridge {
+        inner class SoundCoreBridge {
         
         @JavascriptInterface
         fun playTrack(videoId: String) {
@@ -121,7 +121,7 @@ class SoundCoreActivity : ComponentActivity() {
                     val endpoint = WatchEndpoint(videoId = videoId, playlistId = null)
                     playerConnection?.playQueue(YouTubeQueue(endpoint))
                 } else {
-                    Toast.makeText(this@SoundCoreActivity, "Error: Motor de audio desconectado", Toast.LENGTH_LONG).show()
+                    Toast.makeText(this@SoundCoreActivity, "Error: Motor de audio desconectado", Toast.LONG_LONG).show()
                 }
             }
         }
@@ -166,47 +166,8 @@ class SoundCoreActivity : ComponentActivity() {
                     songs.forEachIndexed { index, song ->
                         val title = song.title.replace("\"", "\\\"")
                         val artist = song.artists.joinToString { it.name }.replace("\"", "\\\"")
-                        // Jalar el browseId del primer artista mapeado para guardarlo en la UI de búsqueda
-                        val artistBrowseId = song.artists.firstOrNull()?.id ?: ""
-                        val id = song.id
-                        val thumbnail = song.thumbnail ?: ""
-
-                        jsonBuilder.append("{")
-                            .append("\"id\":\"$id\",")
-                            .append("\"title\":\"$title\",")
-                            .append("\"artist\":\"$artist\",")
-                            .append("\"artistBrowseId\":\"$artistBrowseId\",")
-                            .append("\"thumbnail\":\"$thumbnail\"")
-                            .append("}")
-                        if (index < songs.size - 1) jsonBuilder.append(",")
-                    }
-                    jsonBuilder.append("]")
-                    
-                    val base64Json = Base64.encodeToString(jsonBuilder.toString().toByteArray(Charsets.UTF_8), Base64.NO_WRAP)
-                    runOnUiThread {
-                        webView.loadUrl("javascript:onSearchTracksResultEncoded('$base64Json')")
-                    }
-                }.onFailure { error ->
-                    runOnUiThread {
-                        Toast.makeText(this@SoundCoreActivity, "Fallo en el radar nativo: ${error.message}", Toast.LENGTH_SHORT).show()
-                    }
-                }
-            }
-        }
-
-        // --- 🎤 NUEVO MÉTODO NATIVO: CARGAR PERFIL DE ARTISTA DESDE YT ---
-        @        @JavascriptInterface
-        fun searchTracks(query: String) {
-            activityScope.launch(Dispatchers.IO) {
-                YouTube.search(query, YouTube.SearchFilter.FILTER_SONG).onSuccess { searchResult ->
-                    val songs = searchResult.items.filterIsInstance<SongItem>()
-                    
-                    val jsonBuilder = StringBuilder("[")
-                    songs.forEachIndexed { index, song ->
-                        val title = song.title.replace("\"", "\\\"")
-                        val artist = song.artists.joinToString { it.name }.replace("\"", "\\\"")
                         
-                        // 🔥 CORRECCIÓN AQUÍ: Jalar los IDs de TODOS los artistas colaboradores separados por comas
+                        // 🔥 Sincronización de múltiples colaboradores por comas
                         val allArtistIds = song.artists.map { it.id ?: "" }.joinToString(",")
                         
                         val id = song.id
@@ -216,7 +177,7 @@ class SoundCoreActivity : ComponentActivity() {
                             .append("\"id\":\"$id\",")
                             .append("\"title\":\"$title\",")
                             .append("\"artist\":\"$artist\",")
-                            .append("\"artistBrowseId\":\"$allArtistIds\",") // Mandamos la lista de IDs a JS
+                            .append("\"artistBrowseId\":\"$allArtistIds\",")
                             .append("\"thumbnail\":\"$thumbnail\"")
                             .append("}")
                         if (index < songs.size - 1) jsonBuilder.append(",")
@@ -278,3 +239,4 @@ class SoundCoreActivity : ComponentActivity() {
         }
     }
 }
+
