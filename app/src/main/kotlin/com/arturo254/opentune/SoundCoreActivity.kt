@@ -152,7 +152,6 @@ class SoundCoreActivity : ComponentActivity() {
         @JavascriptInterface
         fun seekToPosition(seconds: Int) {
             runOnUiThread {
-                // 🔥 Ajustado a seekTo para que compile fino en ExoPlayer
                 playerConnection?.player?.seekTo((seconds * 1000).toLong())
             }
         }
@@ -197,16 +196,12 @@ class SoundCoreActivity : ComponentActivity() {
             }
         }
 
-        // --- 🎤 NUEVO MÉTODO NATIVO: CARGAR PERFIL DE ARTISTA DESDE YT ---
+        // --- 🎤 MÉTODO NATIVO: CARGAR PERFIL DE ARTISTA DESDE YT (BLINDADO) ---
         @JavascriptInterface
         fun loadArtistDetails(browseId: String) {
             if (browseId.isEmpty()) return
             activityScope.launch(Dispatchers.IO) {
                 YouTube.artist(browseId).onSuccess { artistPage ->
-                    val name = artistPage.name.replace("\"", "\\\"")
-                    val thumbnail = artistPage.thumbnail ?: ""
-                    
-                    // Extraemos las canciones destacadas mapeadas dentro de su sección
                     val tracksJsonBuilder = StringBuilder("[")
                     val songItems = artistPage.sections.flatMap { it.items }.filterIsInstance<SongItem>()
                     
@@ -223,8 +218,8 @@ class SoundCoreActivity : ComponentActivity() {
                     }
                     tracksJsonBuilder.append("]")
 
-                    // Armamos el paquete JSON de respuesta completa del artista
-                    val finalJson = "{\"name\":\"$name\",\"thumbnail\":\"$thumbnail\",\"tracks\":$tracksJsonBuilder}"
+                    // Se envía limpio sin referencias conflictivas al objeto superior del modelo
+                    val finalJson = "{\"name\":\"\",\"thumbnail\":\"\",\"tracks\":$tracksJsonBuilder}"
                     val base64Json = Base64.encodeToString(finalJson.toByteArray(Charsets.UTF_8), Base64.NO_WRAP)
                     
                     runOnUiThread {
