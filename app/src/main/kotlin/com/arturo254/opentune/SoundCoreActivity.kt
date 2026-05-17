@@ -20,6 +20,7 @@ import com.arturo254.opentune.playback.queues.YouTubeQueue
 import com.arturo254.opentune.innertube.models.WatchEndpoint
 import com.arturo254.opentune.innertube.YouTube
 import com.arturo254.opentune.innertube.models.SongItem
+import com.arturo254.opentune.innertube.models.AlbumItem
 import com.arturo254.opentune.db.MusicDatabase
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.*
@@ -192,30 +193,60 @@ class SoundCoreActivity : ComponentActivity() {
             }
         }
 
-        @JavascriptInterface
+              @JavascriptInterface
         fun loadArtistDetails(browseId: String) {
             if (browseId.isEmpty()) return
             activityScope.launch(Dispatchers.IO) {
                 YouTube.artist(browseId).onSuccess { artistPage ->
-                    // Agrupamos las canciones de las secciones disponibles de forma segura
-                    val songItems = artistPage.sections.flatMap { it.items }.filterIsInstance<SongItem>()
-                    val tracksJsonBuilder = StringBuilder("[")
+                    // 1. Extraemos los datos principales del artista de forma segura
+                    val artistName = artistPage.artist.title.replace("\"", "\\\"")
+                    val artistPic = artistPage.artist.thumbnail ?: ""
+
+                    // 2. Clasificamos los ítems de las secciones (Canciones vs Álbumes)
+                    val allItems = artistPage.sections.flatMap { it.items }
+                    val songItems = allItems.filterIsInstance<SongItem>()
+                    val albumItems = allItems.filterIsInstance<AlbumItem>()
+
+                    // 3. Construimos el JSON manualmente evitando caracteres de escape rotos
+                    val jsonBuilder = StringBuilder("{")
                     
+                    // Metemos metadatos del artista en la raíz del JSON para el index.html
+                    jsonBuilder.append("\"name\":\"$artistName\",")
+                    jsonBuilder.append("\"thumbnail\":\"$artistPic\",")
+
+                    // Serializamos el arreglo de canciones (tracks)
+                    jsonBuilder.append("\"tracks\":[")
                     songItems.forEachIndexed { index, song ->
                         val tTitle = song.title.replace("\"", "\\\"")
                         val tArtist = song.artists.joinToString { it.name }.replace("\"", "\\\"")
-                        tracksJsonBuilder.append("{")
+                        jsonBuilder.append("{")
                             .append("\"id\":\"${song.id}\",")
                             .append("\"title\":\"$tTitle\",")
                             .append("\"artist\":\"$tArtist\",")
-                            .append("\"thumbnail\":\"${song.thumbnail ?: ""}\"")
+                            .append("\"thumbnail\":\"${song.thumbnail}\"")
                             .append("}")
-                        if (index < songItems.size - 1) tracksJsonBuilder.append(",")
+                        if (index < songItems.size - 1) jsonBuilder.append(",")
                     }
-                    tracksJsonBuilder.append("]")
+                    jsonBuilder.append("],")
 
-                    // Al remover las referencias conflictivas de nombre y banner de la raíz, dejamos que el JS maneje los textos dinámicos
-                    val finalJson = "{\"tracks\":$tracksJsonBuilder}"
+                    // Serializamos el arreglo de álbumes (albums) por si tu HTML los renderiza abajo
+                    jsonBuilder.append("\"albums\":[")
+                    albumItems.forEachIndexed { index, album ->
+                        val aTitle = album.title.replace("\"", "\\\"")
+                        jsonBuilder.append("{")
+                            .append("\"browseId\":\"${album.browseId}\",")
+                            .append("\"playlistId\":\"${album.playlistId}\",")
+                            .append("\"title\":\"$aTitle\",")
+                            .append("\"year\":${album.year ?: "null"},")
+                            .append("\"thumbnail\":\"${album.thumbnail}\"")
+                            .append("}")
+                        if (index < albumItems.size - 1) jsonBuilder.append(",")
+                    }
+                    jsonBuilder.append("]")
+                    jsonBuilder.append("}")
+
+                    // 4. Codificamos a Base64 para que el WebView no rompa caracteres especiales latinos o emojis
+                    val finalJson = jsonBuilder.toString()
                     val base64Json = Base64.encodeToString(finalJson.toByteArray(Charsets.UTF_8), Base64.NO_WRAP)
                     
                     runOnUiThread {

@@ -299,7 +299,7 @@
             }
         }
 
-        // RECEPTOR DE DATOS ENCODED: Procesa la respuesta de Kotlin y dibuja las rolas reales
+               // RECEPTOR DE DATOS ENCODED: Procesa la respuesta de Kotlin y dibuja las rolas reales
         function onSearchTracksResultEncoded(base64JsonString) {
             var contenedor = document.getElementById('resultados');
             try {
@@ -315,14 +315,32 @@
                 tracks.forEach(function(track) {
                     var div = document.createElement('div');
                     div.className = 'track-item';
-                    div.onclick = function() { 
+                    
+                    // Al hacer clic en el contenedor de la rola, se reproduce directamente
+                    div.onclick = function(e) { 
+                        if (e.target.closest('.individual-artist')) return; // No interrumpir si pica al nombre del artista
                         lanzarReproduccionNativa(track.title, track.artist, track.thumbnail, track.id, track.artistBrowseId || ""); 
                     };
+
+                    // Separamos los artistas si vienen juntos por comas para hacerlos individuales
+                    var listaArtistasHTML = "";
+                    if (track.artist.includes(",")) {
+                        var artistasArray = track.artist.split(",");
+                        artistasArray.forEach(function(art, index) {
+                            var nombreLimpio = art.trim();
+                            // El primer artista se lleva el browseId real del radar, los colaboradores se buscan por nombre de respaldo
+                            var bid = (index === 0) ? (track.artistBrowseId || "") : "";
+                            listaArtistasHTML += `<span class="individual-artist" style="cursor: pointer; text-decoration: underline;" onclick="event.stopPropagation(); abrirArtistPanelReal('${bid}', '${nombreLimpio.replace(/'/g, "\\'")}')">${nombreLimpio}</span>${index < artistasArray.length - 1 ? ', ' : ''}`;
+                        });
+                    } else {
+                        listaArtistasHTML = `<span class="individual-artist" style="cursor: pointer;" onclick="event.stopPropagation(); abrirArtistPanelReal('${track.artistBrowseId || ''}', '${track.artist.replace(/'/g, "\\'")}')">${track.artist}</span>`;
+                    }
+
                     div.innerHTML = `
                         <img src="${track.thumbnail}" alt="cover" onerror="this.src='https://placehold.co/50x50/111/fff?text=Music'">
                         <div class="track-info">
                             <div class="track-title">${track.title}</div>
-                            <div class="track-artist" style="cursor: pointer; color: var(--text-muted);" onclick="event.stopPropagation(); abrirArtistPanelReal('${track.artistBrowseId || ''}', '${track.artist.replace(/'/g, "\\'")}')">${track.artist}</div>
+                            <div class="track-artist" style="color: var(--text-muted); font-size: 13px;">${listaArtistasHTML}</div>
                         </div>
                         <i class="fa-solid fa-play" style="color:var(--text-muted); font-size:12px; margin-right:10px;"></i>
                     `;
@@ -357,7 +375,7 @@
             document.getElementById('fpArtist').innerText = artista;
             document.getElementById('fpThumb').src = foto;
 
-            // Al dar clic al artista en el reproductor completo, valida si hay ID dinámico o usa el estático
+ // Al dar clic al artista en el reproductor completo, valida si hay ID dinámico o usa el estático
             document.getElementById('fpArtist').onclick = function() {
                 cerrarFullPlayer();
                 if (browseIdArtistaActual && browseIdArtistaActual !== "") {
@@ -393,7 +411,7 @@
             }
         }
 
-      // Recibe el estado real del reproductor nativo
+        // Recibe el estado real del reproductor nativo
         function setPlaybackState(isPlaying) {
             var btnMini = document.getElementById('pBtn');
             var btnFull = document.getElementById('fpBtn');
@@ -493,7 +511,7 @@
             }
         }
 
-        // NUEVO RECEPTOR: Procesa el Base64 que manda la Activity con los temas top del artista desde YT
+               // NUEVO RECEPTOR: Procesa el Base64 que manda la Activity con temas y álbumes del artista
         function onArtistDetailsResultEncoded(base64Json) {
             try {
                 var data = JSON.parse(decodeBase64Utf8(base64Json));
@@ -506,34 +524,61 @@
                 var container = document.getElementById('artistTracksContainer');
                 container.innerHTML = "";
                 
-                if(!data.tracks || data.tracks.length === 0) {
+                // --- SECCIÓN 1: CANCIONES POPULARES ---
+                if(data.tracks && data.tracks.length > 0) {
+                    data.tracks.forEach(function(track) {
+                        var div = document.createElement('div');
+                        div.className = 'track-item';
+                        div.onclick = function() { 
+                            lanzarReproduccionNativa(track.title, track.artist, track.thumbnail, track.id, ""); 
+                        };
+                        div.innerHTML = `
+                            <img src="${track.thumbnail}" style="width:44px; height:44px; border-radius:6px; margin-right:12px; object-fit:cover;" onerror="this.src='https://placehold.co/50x50/111/fff?text=Music'">
+                            <div class="track-info">
+                                <div class="track-title" style="font-size:14px; font-weight:500;">${track.title}</div>
+                                <div class="track-artist" style="font-size:12px; color:var(--text-muted);">${track.artist}</div>
+                            </div>
+                            <i class="fa-solid fa-play" style="color:var(--text-muted); font-size:11px; margin-right:10px;"></i>
+                        `;
+                        container.appendChild(div);
+                    });
+                } else {
                     container.innerHTML = "<p style='color:var(--text-muted); padding:16px; font-size:13px;'>No se encontraron lanzamientos disponibles.</p>";
-                    return;
                 }
 
-                data.tracks.forEach(function(track) {
-                    var div = document.createElement('div');
-                    div.className = 'track-item';
-                    div.onclick = function() { 
-                        lanzarReproduccionNativa(track.title, track.artist, track.thumbnail, track.id, ""); 
-                    };
-                    div.innerHTML = `
-                        <img src="${track.thumbnail}" style="width:44px; height:44px; border-radius:6px; margin-right:12px; object-fit:cover;" onerror="this.src='https://placehold.co/50x50/111/fff?text=Music'">
-                        <div class="track-info">
-                            <div class="track-title" style="font-size:14px; font-weight:500;">${track.title}</div>
-                            <div class="track-artist" style="font-size:12px; color:var(--text-muted);">${track.artist}</div>
-                        </div>
-                        <i class="fa-solid fa-play" style="color:var(--text-muted); font-size:11px; margin-right:10px;"></i>
-                    `;
-                    container.appendChild(div);
-                });
+                // --- SECCIÓN 2: ÁLBUMES DE ESTUDIO (NUEVO) ---
+                if(data.albums && data.albums.length > 0) {
+                    var tituloAlbumes = document.createElement('div');
+                    tituloAlbumes.className = 'section-title';
+                    tituloAlbumes.style.cssText = 'padding: 0 16px; margin-top: 25px; margin-bottom: 12px;';
+                    tituloAlbumes.innerText = 'Álbumes y Sencillos';
+                    container.appendChild(tituloAlbumes);
+
+                    // Reutilizamos tu clase "suggested-grid" para pintar las portadas de los discos en cuadrícula
+                    var gridAlbumes = document.createElement('div');
+                    gridAlbumes.className = 'suggested-grid';
+                    gridAlbumes.style.padding = '0 16px 30px 16px';
+
+                    data.albums.forEach(function(album) {
+                        var card = document.createElement('div');
+                        card.className = 'suggested-card';
+                        card.onclick = function() {
+                            alert("Cargando lista del álbum: " + album.title + " 💿");
+                            // Próximamente puedes enlazarlo a un SoundCoreBridge.loadAlbumTracks(album.playlistId)
+                        };
+                        card.innerHTML = `
+                            <img src="${album.thumbnail}" alt="cover" onerror="this.src='https://placehold.co/100x100/111/fff?text=Disco'">
+                            <div class="card-title" style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${album.title}</div>
+                            <div class="card-artist">${album.year ? album.year : 'Álbum'}</div>
+                        `;
+                        gridAlbumes.appendChild(card);
+                    });
+                    container.appendChild(gridAlbumes);
+                }
+
             } catch(e) {
                 document.getElementById('artistTracksContainer').innerHTML = `<p style='color:#ff5555; padding:16px;'>Error al mapear discografía: ${e.message}</p>`;
             }
-        }
-
-        function cerrarArtistPanel() {
-            document.getElementById('artistPanel').classList.remove('open');
         }
 
         // --- SISTEMA DE LA BIBLIOTECA ---
