@@ -60,8 +60,7 @@ class SoundCoreActivity : ComponentActivity() {
                     }
                 }
 
-                // 🔥 CORRECCIÓN CLAVE: Rastreador cíclico seguro acoplado al bucle de progreso
-                // En lugar de recolectar un flujo inexistente en conn, leemos directamente del player nativo
+                // Rastreador cíclico seguro de progreso y metadatos
                 startPlaybackTrackers()
             }
         }
@@ -104,7 +103,7 @@ class SoundCoreActivity : ComponentActivity() {
                         }
                     }
 
-                    // 2. 🔥 Sincronizar Metadatos cuando cambia la pista (Next/Prev) desde el sistema/notificación
+                    // 2. Sincronizar Metadatos cuando cambia la pista (Next/Prev) desde el sistema/notificación
                     val currentMediaItem = p.currentMediaItem
                     if (currentMediaItem != null) {
                         val mediaId = currentMediaItem.mediaId
@@ -116,7 +115,7 @@ class SoundCoreActivity : ComponentActivity() {
                             val artist = metadata.artist?.toString()?.replace("\"", "\\\"") ?: "Artista Desconocido"
                             val thumbnail = metadata.artworkUri?.toString() ?: ""
                             
-                            // Pasamos el ID que usa Arturo para identificar el recurso o el artista
+                            // Pasamos el ID del recurso multimedia para el manejo del reproductor nativo
                             val artistBrowseId = mediaId ?: ""
 
                             val json = """
@@ -211,7 +210,7 @@ class SoundCoreActivity : ComponentActivity() {
                             .append("\"id\":\"$id\",")
                             .append("\"title\":\"$title\",")
                             .append("\"artist\":\"$artist\",")
-                            .append("\"artistBrowseId\":\"$allArtistIds\",")
+                            .append("\"artistBrowseId\":\"$allArtistIds\",") // REGRESADO: Volvemos a enviar los IDs reales de InnerTube (UC...)
                             .append("\"thumbnail\":\"$thumbnail\"")
                             .append("}")
                         if (index < songs.size - 1) jsonBuilder.append(",")
