@@ -88,9 +88,11 @@ class SoundCoreActivity : ComponentActivity() {
 
     private fun startPlaybackTrackers() {
         progressJob?.cancel()
+        // Aseguramos explícitamente que corra en el Main Thread
         progressJob = activityScope.launch(Dispatchers.Main) {
             while (isActive) {
                 playerConnection?.player?.let { p ->
+                    // Protegemos las lecturas del reproductor en el hilo principal
                     if (p.isPlaying) {
                         val current = p.currentPosition / 1000
                         val duration = p.duration / 1000
@@ -240,16 +242,12 @@ class SoundCoreActivity : ComponentActivity() {
                     return@launch
                 }
 
-                // Usamos el validador directo de Arturo mapeando las canciones dinámicamente en vez de usar la clase fantasma ArtistPage
                 YouTube.artist(cleanArtistId).onSuccess { artistPage ->
-                    // Para evitar conflictos de clases anónimas de Arturo en el workflow de Git, 
-                    // leemos directamente el objeto dinámico que regresa y lo enviamos al parseador plano.
                     try {
                         val name = artistPage.javaClass.getMethod("getArtist").invoke(artistPage)
                         val title = name.javaClass.getMethod("getTitle").invoke(name) as String
                         val thumb = name.javaClass.getMethod("getThumbnail").invoke(name) as? String ?: ""
                         
-                        // Buscamos las canciones asociadas al artista para pintar el HTML limpiamente
                         YouTube.search(title, YouTube.SearchFilter.FILTER_SONG).onSuccess { songResult ->
                             sendManualPayload(title, thumb, songResult.items.filterIsInstance<SongItem>(), emptyList())
                         }.onFailure {
@@ -269,7 +267,11 @@ class SoundCoreActivity : ComponentActivity() {
         }
 
         private suspend fun executeFallbackSearch(corruptId: String) {
-            val currentArtistName = playerConnection?.player?.currentMediaItem?.mediaMetadata?.artist?.toString() ?: ""
+            // 🛠️ FIX DE HILOS CLAVE: Saltamos al Main Thread para leer de forma segura el reproductor nativo
+            val currentArtistName = withContext(Dispatchers.Main) {
+                playerConnection?.player?.currentMediaItem?.mediaMetadata?.artist?.toString() ?: ""
+            }
+            
             val queryTarget = if (currentArtistName.isNotEmpty()) currentArtistName else corruptId
 
             YouTube.search(queryTarget, YouTube.SearchFilter.FILTER_ARTIST).onSuccess { searchResult ->
