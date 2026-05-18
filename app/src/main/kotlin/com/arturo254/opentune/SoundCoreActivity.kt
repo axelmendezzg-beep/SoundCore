@@ -39,7 +39,6 @@ class SoundCoreActivity : ComponentActivity() {
     private val activityScope = CoroutineScope(Dispatchers.Main + Job())
     private var progressJob: Job? = null
 
-    // Variable para rastrear el ID multimedia actual y evitar bucles innecesarios en el WebView
     private var lastMediaId: String? = null
 
     private val serviceConnection = object : ServiceConnection {
@@ -53,14 +52,12 @@ class SoundCoreActivity : ComponentActivity() {
                     Toast.makeText(this@SoundCoreActivity, "¡Sistemas nativos acoplados! 🏎️", Toast.LENGTH_SHORT).show()
                 }
 
-                // Sincroniza el estado de reproducción (Play/Pause)
                 activityScope.launch {
                     conn.isPlaying.collectLatest { playing ->
                         webView.loadUrl("javascript:setPlaybackState($playing)")
                     }
                 }
 
-                // Rastreador cíclico seguro de progreso y metadatos
                 startPlaybackTrackers()
             }
         }
@@ -94,7 +91,6 @@ class SoundCoreActivity : ComponentActivity() {
         progressJob = activityScope.launch(Dispatchers.Main) {
             while (isActive) {
                 playerConnection?.player?.let { p ->
-                    // 1. Sincronizar Progreso de la barra de reproducción
                     if (p.isPlaying) {
                         val current = p.currentPosition / 1000
                         val duration = p.duration / 1000
@@ -103,7 +99,6 @@ class SoundCoreActivity : ComponentActivity() {
                         }
                     }
 
-                    // 2. Sincronizar Metadatos cuando cambia la pista (Next/Prev) desde el sistema/notificación
                     val currentMediaItem = p.currentMediaItem
                     if (currentMediaItem != null) {
                         val mediaId = currentMediaItem.mediaId
@@ -115,8 +110,8 @@ class SoundCoreActivity : ComponentActivity() {
                             val artist = metadata.artist?.toString()?.replace("\"", "\\\"") ?: "Artista Desconocido"
                             val thumbnail = metadata.artworkUri?.toString() ?: ""
                             
-                            // Pasamos el ID del recurso multimedia para el manejo del reproductor nativo
-                            val artistBrowseId = mediaId ?: ""
+                            // Pasamos el ID del recurso multimedia o el nombre del artista como fallback directo
+                            val artistBrowseId = mediaId ?: artist
 
                             val json = """
                                 {
@@ -210,7 +205,7 @@ class SoundCoreActivity : ComponentActivity() {
                             .append("\"id\":\"$id\",")
                             .append("\"title\":\"$title\",")
                             .append("\"artist\":\"$artist\",")
-                            .append("\"artistBrowseId\":\"$allArtistIds\",") // REGRESADO: Volvemos a enviar los IDs reales de InnerTube (UC...)
+                            .append("\"artistBrowseId\":\"$allArtistIds\",")
                             .append("\"thumbnail\":\"$thumbnail\"")
                             .append("}")
                         if (index < songs.size - 1) jsonBuilder.append(",")
@@ -234,6 +229,7 @@ class SoundCoreActivity : ComponentActivity() {
             val rawId = browseId.trim()
             if (rawId.isEmpty()) return
             
+            // Si el ID viene corrupto, contiene comas o es el mediaId del reproductor, limpiamos el primero
             val cleanArtistId = if (rawId.contains(",")) {
                 rawId.split(",").firstOrNull { it.trim().isNotEmpty() }?.trim() ?: rawId
             } else {
@@ -241,55 +237,110 @@ class SoundCoreActivity : ComponentActivity() {
             }
 
             activityScope.launch(Dispatchers.IO) {
+                // Interceptamos la llamada directa. Si el ID no tiene formato nativo de canal (UC/FM),
+                // o si falla con un código 400, disparamos el plan de rescate inteligente.
+                if (!cleanArtistId.startsWith("UC") && !cleanArtistId.startsWith("FM")) {
+                    executeFallbackSearch(cleanArtistId)
+                    return@launch
+                }
+
                 YouTube.artist(cleanArtistId).onSuccess { artistPage ->
-                    val nombreReal = artistPage.artist.title.replace("\"", "\\\"")
-                    val fotoReal = artistPage.artist.thumbnail ?: ""
-                    
-                    val songItems = artistPage.sections.flatMap { it.items }.filterIsInstance<SongItem>()
-                    val albumItems = artistPage.sections.flatMap { it.items }.filterIsInstance<AlbumItem>()
-                    
-                    val tracksJsonBuilder = StringBuilder("[")
-                    songItems.forEachIndexed { index, song ->
-                        val tTitle = song.title.replace("\"", "\\\"")
-                        val tArtist = song.artists.joinToString { it.name }.replace("\"", "\\\"")
-                        val tArtistIds = song.artists.map { it.id ?: "" }.joinToString(",")
-                        tracksJsonBuilder.append("{")
-                            .append("\"id\":\"${song.id}\",")
-                            .append("\"title\":\"$tTitle\",")
-                            .append("\"artist\":\"$tArtist\",")
-                            .append("\"artistBrowseId\":\"$tArtistIds\",")
-                            .append("\"thumbnail\":\"${song.thumbnail ?: ""}\"")
-                            .append("}")
-                        if (index < songItems.size - 1) tracksJsonBuilder.append(",")
-                    }
-                    tracksJsonBuilder.append("]")
-
-                    val albumsJsonBuilder = StringBuilder("[")
-                    albumItems.forEachIndexed { index, album ->
-                        val aTitle = album.title.replace("\"", "\\\"")
-                        albumsJsonBuilder.append("{")
-                            .append("\"title\":\"$aTitle\",")
-                            .append("\"year\":\"${album.year ?: ""}\",")
-                            .append("\"thumbnail\":\"${album.thumbnail ?: ""}\"")
-                            .append("}")
-                        if (index < albumItems.size - 1) albumsJsonBuilder.append(",")
-                    }
-                    albumsJsonBuilder.append("]")
-
-                    val finalJson = "{\"name\":\"$nombreReal\",\"thumbnail\":\"$fotoReal\",\"tracks\":$tracksJsonBuilder,\"albums\":$albumsJsonBuilder}"
-                    val base64Json = Base64.encodeToString(finalJson.toByteArray(Charsets.UTF_8), Base64.NO_WRAP)
-                    
-                    runOnUiThread {
-                        webView.loadUrl("javascript:onArtistDetailsResultEncoded('$base64Json')")
-                    }
+                    sendArtistPayloadToHtml(artistPage)
                 }.onFailure { error ->
-                    runOnUiThread {
-                        val errorMsg = error.message ?: "Error de red"
-                        val safeError = errorMsg.replace("\"", "\\\"").replace("'", "\\'")
-                        webView.loadUrl("javascript:onArtistDetailsError('$safeError')")
+                    // 🛡️ PLAN DE RESCATE: Si da Error 400 (invalid argument), buscamos el nombre real
+                    if (error.message?.contains("400") == true || error.message?.contains("argument") == true) {
+                        executeFallbackSearch(cleanArtistId)
+                    } else {
+                        triggerHtmlError(error.message)
                     }
                 }
             }
         }
+
+        // 🚀 Función de rescate: Busca al artista por su contexto si InnerTube rechaza el ID directo
+        private suspend fun executeFallbackSearch(corruptId: String) {
+            // Intentamos recuperar el nombre del artista actual desde los metadatos nativos del reproductor
+            val currentArtistName = playerConnection?.player?.currentMediaItem?.mediaMetadata?.artist?.toString() ?: ""
+            val queryTarget = if (currentArtistName.isNotEmpty()) currentArtistName else corruptId
+
+            YouTube.search(queryTarget, YouTube.SearchFilter.FILTER_ARTIST).onSuccess { searchResult ->
+                val legitArtist = searchResult.items.filterIsInstance<ArtistItem>().firstOrNull()
+                val realId = legitArtist?.id ?: ""
+                
+                if (realId.isNotEmpty() && realId != corruptId) {
+                    YouTube.artist(realId).onSuccess { artistPage ->
+                        sendArtistPayloadToHtml(artistPage)
+                    }.onFailure { err ->
+                        triggerHtmlError(err.message)
+                    }
+                } else {
+                    // Si falla el endpoint de artista por completo, llenamos la UI buscando sus canciones directamente
+                    YouTube.search(queryTarget, YouTube.SearchFilter.FILTER_SONG).onSuccess { songResult ->
+                        val trackName = legitArtist?.title ?: queryTarget
+                        val trackPhoto = legitArtist?.thumbnail ?: ""
+                        sendManualPayload(trackName, trackPhoto, songResult.items.filterIsInstance<SongItem>(), emptyList())
+                    }.onFailure { err ->
+                        triggerHtmlError(err.message)
+                    }
+                }
+            }.onFailure { error ->
+                triggerHtmlError(error.message)
+            }
+        }
+
+        private suspend fun sendArtistPayloadToHtml(artistPage: com.arturo254.opentune.innertube.models.ArtistPage) {
+            val nombreReal = artistPage.artist.title
+            val fotoReal = artistPage.artist.thumbnail ?: ""
+            val songItems = artistPage.sections.flatMap { it.items }.filterIsInstance<SongItem>()
+            val albumItems = artistPage.sections.flatMap { it.items }.filterIsInstance<AlbumItem>()
+            
+            sendManualPayload(nombreReal, fotoReal, songItems, albumItems)
+        }
+
+        private suspend fun sendManualPayload(name: String, thumbnail: String, songs: List<SongItem>, albums: List<AlbumItem>) {
+            val tracksJsonBuilder = StringBuilder("[")
+            songs.take(20).forEachIndexed { index, song ->
+                val tTitle = song.title.replace("\"", "\\\"")
+                val tArtist = song.artists.joinToString { it.name }.replace("\"", "\\\"")
+                val tArtistIds = song.artists.map { it.id ?: "" }.joinToString(",")
+                tracksJsonBuilder.append("{")
+                    .append("\"id\":\"${song.id}\",")
+                    .append("\"title\":\"$tTitle\",")
+                    .append("\"artist\":\"$tArtist\",")
+                    .append("\"artistBrowseId\":\"$tArtistIds\",")
+                    .append("\"thumbnail\":\"${song.thumbnail ?: ""}\"")
+                    .append("}")
+                if (index < minOf(songs.size, 20) - 1) tracksJsonBuilder.append(",")
+            }
+            tracksJsonBuilder.append("]")
+
+            val albumsJsonBuilder = StringBuilder("[")
+            albums.forEachIndexed { index, album ->
+                val aTitle = album.title.replace("\"", "\\\"")
+                albumsJsonBuilder.append("{")
+                    .append("\"title\":\"$aTitle\",")
+                    .append("\"year\":\"${album.year ?: ""}\",")
+                    .append("\"thumbnail\":\"${album.thumbnail ?: ""}\"")
+                    .append("}")
+                if (index < albums.size - 1) albumsJsonBuilder.append(",")
+            }
+            albumsJsonBuilder.append("]")
+
+            val finalJson = "{\"name\":\"${name.replace("\"", "\\\"")}\",\"thumbnail\":\"$thumbnail\",\"tracks\":$tracksJsonBuilder,\"albums\":$albumsJsonBuilder}"
+            val base64Json = Base64.encodeToString(finalJson.toByteArray(Charsets.UTF_8), Base64.NO_WRAP)
+            
+            withContext(Dispatchers.Main) {
+                webView.loadUrl("javascript:onArtistDetailsResultEncoded('$base64Json')")
+            }
+        }
+
+        private suspend fun triggerHtmlError(message: String?) {
+            withContext(Dispatchers.Main) {
+                val errorMsg = message ?: "Error de sincronización con InnerTube"
+                val safeError = errorMsg.replace("\"", "\\\"").replace("'", "\\'")
+                webView.loadUrl("javascript:onArtistDetailsError('$safeError')")
+            }
+        }
     }
 }
+
