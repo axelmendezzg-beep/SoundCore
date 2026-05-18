@@ -110,7 +110,6 @@ class SoundCoreActivity : ComponentActivity() {
                             val artist = metadata.artist?.toString()?.replace("\"", "\\\"") ?: "Artista Desconocido"
                             val thumbnail = metadata.artworkUri?.toString() ?: ""
                             
-                            // Pasamos el ID del recurso multimedia o el nombre del artista como fallback directo
                             val artistBrowseId = mediaId ?: artist
 
                             val json = """
@@ -229,7 +228,6 @@ class SoundCoreActivity : ComponentActivity() {
             val rawId = browseId.trim()
             if (rawId.isEmpty()) return
             
-            // Si el ID viene corrupto, contiene comas o es el mediaId del reproductor, limpiamos el primero
             val cleanArtistId = if (rawId.contains(",")) {
                 rawId.split(",").firstOrNull { it.trim().isNotEmpty() }?.trim() ?: rawId
             } else {
@@ -237,17 +235,30 @@ class SoundCoreActivity : ComponentActivity() {
             }
 
             activityScope.launch(Dispatchers.IO) {
-                // Interceptamos la llamada directa. Si el ID no tiene formato nativo de canal (UC/FM),
-                // o si falla con un código 400, disparamos el plan de rescate inteligente.
                 if (!cleanArtistId.startsWith("UC") && !cleanArtistId.startsWith("FM")) {
                     executeFallbackSearch(cleanArtistId)
                     return@launch
                 }
 
+                // Usamos el validador directo de Arturo mapeando las canciones dinámicamente en vez de usar la clase fantasma ArtistPage
                 YouTube.artist(cleanArtistId).onSuccess { artistPage ->
-                    sendArtistPayloadToHtml(artistPage)
+                    // Para evitar conflictos de clases anónimas de Arturo en el workflow de Git, 
+                    // leemos directamente el objeto dinámico que regresa y lo enviamos al parseador plano.
+                    try {
+                        val name = artistPage.javaClass.getMethod("getArtist").invoke(artistPage)
+                        val title = name.javaClass.getMethod("getTitle").invoke(name) as String
+                        val thumb = name.javaClass.getMethod("getThumbnail").invoke(name) as? String ?: ""
+                        
+                        // Buscamos las canciones asociadas al artista para pintar el HTML limpiamente
+                        YouTube.search(title, YouTube.SearchFilter.FILTER_SONG).onSuccess { songResult ->
+                            sendManualPayload(title, thumb, songResult.items.filterIsInstance<SongItem>(), emptyList())
+                        }.onFailure {
+                            executeFallbackSearch(title)
+                        }
+                    } catch (e: Exception) {
+                        executeFallbackSearch(cleanArtistId)
+                    }
                 }.onFailure { error ->
-                    // 🛡️ PLAN DE RESCATE: Si da Error 400 (invalid argument), buscamos el nombre real
                     if (error.message?.contains("400") == true || error.message?.contains("argument") == true) {
                         executeFallbackSearch(cleanArtistId)
                     } else {
@@ -257,44 +268,23 @@ class SoundCoreActivity : ComponentActivity() {
             }
         }
 
-        // 🚀 Función de rescate: Busca al artista por su contexto si InnerTube rechaza el ID directo
         private suspend fun executeFallbackSearch(corruptId: String) {
-            // Intentamos recuperar el nombre del artista actual desde los metadatos nativos del reproductor
             val currentArtistName = playerConnection?.player?.currentMediaItem?.mediaMetadata?.artist?.toString() ?: ""
             val queryTarget = if (currentArtistName.isNotEmpty()) currentArtistName else corruptId
 
             YouTube.search(queryTarget, YouTube.SearchFilter.FILTER_ARTIST).onSuccess { searchResult ->
                 val legitArtist = searchResult.items.filterIsInstance<ArtistItem>().firstOrNull()
-                val realId = legitArtist?.id ?: ""
+                val trackName = legitArtist?.title ?: queryTarget
+                val trackPhoto = legitArtist?.thumbnail ?: ""
                 
-                if (realId.isNotEmpty() && realId != corruptId) {
-                    YouTube.artist(realId).onSuccess { artistPage ->
-                        sendArtistPayloadToHtml(artistPage)
-                    }.onFailure { err ->
-                        triggerHtmlError(err.message)
-                    }
-                } else {
-                    // Si falla el endpoint de artista por completo, llenamos la UI buscando sus canciones directamente
-                    YouTube.search(queryTarget, YouTube.SearchFilter.FILTER_SONG).onSuccess { songResult ->
-                        val trackName = legitArtist?.title ?: queryTarget
-                        val trackPhoto = legitArtist?.thumbnail ?: ""
-                        sendManualPayload(trackName, trackPhoto, songResult.items.filterIsInstance<SongItem>(), emptyList())
-                    }.onFailure { err ->
-                        triggerHtmlError(err.message)
-                    }
+                YouTube.search(queryTarget, YouTube.SearchFilter.FILTER_SONG).onSuccess { songResult ->
+                    sendManualPayload(trackName, trackPhoto, songResult.items.filterIsInstance<SongItem>(), emptyList())
+                }.onFailure { err ->
+                    triggerHtmlError(err.message)
                 }
             }.onFailure { error ->
                 triggerHtmlError(error.message)
             }
-        }
-
-        private suspend fun sendArtistPayloadToHtml(artistPage: com.arturo254.opentune.innertube.models.ArtistPage) {
-            val nombreReal = artistPage.artist.title
-            val fotoReal = artistPage.artist.thumbnail ?: ""
-            val songItems = artistPage.sections.flatMap { it.items }.filterIsInstance<SongItem>()
-            val albumItems = artistPage.sections.flatMap { it.items }.filterIsInstance<AlbumItem>()
-            
-            sendManualPayload(nombreReal, fotoReal, songItems, albumItems)
         }
 
         private suspend fun sendManualPayload(name: String, thumbnail: String, songs: List<SongItem>, albums: List<AlbumItem>) {
@@ -343,4 +333,3 @@ class SoundCoreActivity : ComponentActivity() {
         }
     }
 }
-
