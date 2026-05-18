@@ -4,6 +4,11 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>SoundCore Player</title>
+    
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    
+    <link rel="stylesheet" href="css/style.css">
+    
     <style>
         /* Parches rápidos de capas para asegurar que el reproductor mini flote sobre todo */
         .player-bar {
@@ -285,401 +290,399 @@
             <span class="nav-label">Biblioteca</span>
         </div>
     </nav>
+
     <script>
-// --- 📊 VARIABLES GLOBALES DE ESTADO ---
-var duracionCancionActual = 0;
-var browseIdArtistaActual = "";
-let contadorPlaylists = 0;
+        // --- 📊 VARIABLES GLOBALES DE ESTADO ---
+        var duracionCancionActual = 0;
+        var browseIdArtistaActual = "";
+        let contadorPlaylists = 0;
 
-// --- 🛠️ UTILIDADES DE DECODIFICACIÓN ---
-function decodeBase64Utf8(base64) {
-    return decodeURIComponent(Array.prototype.map.call(atob(base64), function(c) {
-        return '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2);
-    }).join(''));
-}
-
-function formatTime(seconds) {
-    var min = Math.floor(seconds / 60);
-    var sec = Math.floor(seconds % 60);
-    return min + ":" + (sec < 10 ? "0" : "") + sec;
-}
-
-// --- 🗺️ NAVEGACIÓN Y VISTAS ---
-function cambiarPestaña(vista) {
-    document.querySelectorAll('.app-view').forEach(v => v.classList.remove('active'));
-    document.querySelectorAll('.nav-item').forEach(t => t.classList.remove('active'));
-
-    document.getElementById(`view-${vista}`).classList.add('active');
-    document.getElementById(`tab-${vista}`).classList.add('active');
-}
-
-function abrirFullPlayer() { document.getElementById('fullPlayer').classList.add('open'); }
-function cerrarFullPlayer() { document.getElementById('fullPlayer').classList.remove('open'); }
-function abrirConfigPanel() { document.getElementById('configPanel').classList.add('open'); }
-function cerrarConfigPanel() { document.getElementById('configPanel').classList.remove('open'); }
-function cerrarArtistPanel() { document.getElementById('artistPanel').classList.remove('open'); }
-
-// 🛠️ CORRECCIÓN: Se añade el parámetro 'e' para evitar caídas en el WebView de Android
-function filtrarCategoria(categoria, e) {
-    document.querySelectorAll('.chip').forEach(c => c.classList.remove('active'));
-    if (e && e.currentTarget) {
-        e.currentTarget.classList.add('active');
-    } else if (window.event) {
-        window.event.currentTarget.classList.add('active');
-    }
-}
-
-// --- 📡 MOTOR DE BÚSQUEDA ---
-function dispararBusquedaReal() {
-    var query = document.getElementById('queryInput').value;
-    if(query.trim() !== "") {
-        document.getElementById('resultados').innerHTML = "<p style='color:var(--text-muted); text-align:center; padding-top: 50px;'>Buscando en el motor nativo... 📡</p>";
-        if (typeof SoundCoreBridge !== "undefined") {
-            SoundCoreBridge.searchTracks(query);
-        } else {
-            console.log("Modo de prueba local: Puente nativo ausente.");
-        }
-    }
-}
-
-function onSearchTracksResultEncoded(base64JsonString) {
-    var contenedor = document.getElementById('resultados');
-    try {
-        var jsonString = decodeBase64Utf8(base64JsonString);
-        var tracks = JSON.parse(jsonString);
-        contenedor.innerHTML = "";
-
-        if(tracks.length === 0) {
-            contenedor.innerHTML = "<p style='color:var(--text-muted); text-align:center; padding-top: 50px;'>No se encontraron rolas.</p>";
-            return;
+        // --- 🛠️ UTILIDADES DE DECODIFICACIÓN ---
+        function decodeBase64Utf8(base64) {
+            return decodeURIComponent(Array.prototype.map.call(atob(base64), function(c) {
+                return '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2);
+            }).join(''));
         }
 
-        // 🚀 MEJORA: Usamos un Fragment para renderizar todo de un solo golpe (más rápido)
-        var fragment = document.createDocumentFragment();
-        tracks.forEach(function(track) {
-            var div = document.createElement('div');
-            div.className = 'track-item';
-            div.style.cursor = 'pointer';
+        function formatTime(seconds) {
+            var min = Math.floor(seconds / 60);
+            var sec = Math.floor(seconds % 60);
+            return min + ":" + (sec < 10 ? "0" : "") + sec;
+        }
+
+        // --- 🗺️ NAVEGACIÓN Y VISTAS ---
+        function cambiarPestaña(vista) {
+            document.querySelectorAll('.app-view').forEach(v => v.classList.remove('active'));
+            document.querySelectorAll('.nav-item').forEach(t => t.classList.remove('active'));
+
+            document.getElementById(`view-${vista}`).classList.add('active');
+            document.getElementById(`tab-${vista}`).classList.add('active');
+        }
+
+        function abrirFullPlayer() { document.getElementById('fullPlayer').classList.add('open'); }
+        function cerrarFullPlayer() { document.getElementById('fullPlayer').classList.remove('open'); }
+        function abrirConfigPanel() { document.getElementById('configPanel').classList.add('open'); }
+        function cerrarConfigPanel() { document.getElementById('configPanel').classList.remove('open'); }
+        function cerrarArtistPanel() { document.getElementById('artistPanel').classList.remove('open'); }
+
+        function filtrarCategoria(categoria, e) {
+            document.querySelectorAll('.chip').forEach(c => c.classList.remove('active'));
+            if (e && e.currentTarget) {
+                e.currentTarget.classList.add('active');
+            } else if (window.event) {
+                window.event.currentTarget.classList.add('active');
+            }
+        }
+
+        // --- 📡 MOTOR DE BÚSQUEDA ---
+        function dispararBusquedaReal() {
+            var query = document.getElementById('queryInput').value;
+            if(query.trim() !== "") {
+                document.getElementById('resultados').innerHTML = "<p style='color:var(--text-muted); text-align:center; padding-top: 50px;'>Buscando en el motor nativo... 📡</p>";
+                if (typeof SoundCoreBridge !== "undefined") {
+                    SoundCoreBridge.searchTracks(query);
+                } else {
+                    console.log("Modo de prueba local: Puente nativo ausente.");
+                }
+            }
+        }
+
+        function onSearchTracksResultEncoded(base64JsonString) {
+            var contenedor = document.getElementById('resultados');
+            try {
+                var jsonString = decodeBase64Utf8(base64JsonString);
+                var tracks = JSON.parse(jsonString);
+                contenedor.innerHTML = "";
+
+                if(tracks.length === 0) {
+                    contenedor.innerHTML = "<p style='color:var(--text-muted); text-align:center; padding-top: 50px;'>No se encontraron rolas.</p>";
+                    return;
+                }
+
+                var fragment = document.createDocumentFragment();
+                tracks.forEach(function(track) {
+                    var div = document.createElement('div');
+                    div.className = 'track-item';
+                    div.style.cursor = 'pointer';
+                    
+                    div.onclick = function() { 
+                        lanzarReproduccionNativa(track.title, track.artist, track.thumbnail, track.id, track.artistBrowseId || ""); 
+                    };
+
+                    div.innerHTML = `
+                        <img src="${track.thumbnail}" alt="cover" onerror="this.src='https://placehold.co/50x50/111/fff?text=Music'">
+                        <div class="track-info">
+                            <div class="track-title">${track.title}</div>
+                            <div class="track-artist" style="color: var(--text-muted); font-size: 13px;">${track.artist}</div>
+                        </div>
+                        <i class="fa-solid fa-play" style="color:var(--text-muted); font-size:12px; margin-right:10px;"></i>
+                    `;
+                    fragment.appendChild(div);
+                });
+                contenedor.appendChild(fragment);
+            } catch (error) {
+                contenedor.innerHTML = `<p style='color:#ff5555; text-align:center; padding-top: 50px;'>Fallo al desempaquetar datos: ${error.message}</p>`;
+            }
+        }
+
+        // --- ⚡ CONTROLES Y REPRODUCCIÓN MULTIMEDIA ---
+        function reproducirSugerida(titulo, artista, foto, videoId) {
+            lanzarReproduccionNativa(titulo, artista, foto, videoId, "");
+        }
+
+        // Vinculación de funciones de reproducción con el puente nativo Android
+        function togglePlaySimulado() {
+            if (typeof SoundCoreBridge !== "undefined") { SoundCoreBridge.togglePlayPause(); }
+        }
+
+        function saltarSiguiente() {
+            if (typeof SoundCoreBridge !== "undefined") { SoundCoreBridge.skipToNext(); }
+        }
+
+        function saltarAnterior() {
+            if (typeof SoundCoreBridge !== "undefined") { SoundCoreBridge.skipToPrevious(); }
+        }
+
+        function setPlaybackState(isPlaying) {
+            var btnMini = document.getElementById('pBtn');
+            var btnFull = document.getElementById('fpBtn');
+            if(isPlaying) {
+                if(btnMini) btnMini.innerHTML = '<i class="fa-solid fa-pause"></i>';
+                if(btnFull) btnFull.innerHTML = '<i class="fa-solid fa-pause"></i>';
+            } else {
+                if(btnMini) btnMini.innerHTML = '<i class="fa-solid fa-play"></i>';
+                if(btnFull) btnFull.innerHTML = '<i class="fa-solid fa-play"></i>';
+            }
+        }
+
+        function updatePlaybackProgress(current, duration) {
+            duracionCancionActual = duration; 
+            var porcentaje = (current / duration) * 100;
+            var progressBar = document.querySelector('.progress-current');
+            if (progressBar) progressBar.style.width = porcentaje + '%';
             
-            div.onclick = function() { 
-                lanzarReproduccionNativa(track.title, track.artist, track.thumbnail, track.id, track.artistBrowseId || ""); 
-            };
-
-            div.innerHTML = `
-                <img src="${track.thumbnail}" alt="cover" onerror="this.src='https://placehold.co/50x50/111/fff?text=Music'">
-                <div class="track-info">
-                    <div class="track-title">${track.title}</div>
-                    <div class="track-artist" style="color: var(--text-muted); font-size: 13px;">${track.artist}</div>
-                </div>
-                <i class="fa-solid fa-play" style="color:var(--text-muted); font-size:12px; margin-right:10px;"></i>
-            `;
-            fragment.appendChild(div);
-        });
-        contenedor.appendChild(fragment);
-    } catch (error) {
-        contenedor.innerHTML = `<p style='color:#ff5555; text-align:center; padding-top: 50px;'>Fallo al desempaquetar datos: ${error.message}</p>`;
-    }
-}
-
-// --- ⚡ CONTROLES Y REPRODUCCIÓN MULTIMEDIA ---
-function reproducirSugerida(titulo, artista, foto, videoId) {
-    lanzarReproduccionNativa(titulo, artista, foto, videoId, "");
-}
-
-function togglePlaySimulado() {
-    if (typeof SoundCoreBridge !== "undefined") { SoundCoreBridge.togglePlayPause(); }
-}
-
-function saltarSiguiente() {
-    if (typeof SoundCoreBridge !== "undefined") { SoundCoreBridge.skipToNext(); }
-}
-
-function saltarAnterior() {
-    if (typeof SoundCoreBridge !== "undefined") { SoundCoreBridge.skipToPrevious(); }
-}
-
-function setPlaybackState(isPlaying) {
-    var btnMini = document.getElementById('pBtn');
-    var btnFull = document.getElementById('fpBtn');
-    if(isPlaying) {
-        if(btnMini) btnMini.innerHTML = '<i class="fa-solid fa-pause"></i>';
-        if(btnFull) btnFull.innerHTML = '<i class="fa-solid fa-pause"></i>';
-    } else {
-        if(btnMini) btnMini.innerHTML = '<i class="fa-solid fa-play"></i>';
-        if(btnFull) btnFull.innerHTML = '<i class="fa-solid fa-play"></i>';
-    }
-}
-
-function updatePlaybackProgress(current, duration) {
-    duracionCancionActual = duration; 
-    var porcentaje = (current / duration) * 100;
-    var progressBar = document.querySelector('.progress-current');
-    if (progressBar) progressBar.style.width = porcentaje + '%';
-    
-    var timeCurrent = document.getElementById('timeCurrent');
-    var timeTotal = document.getElementById('timeTotal');
-    if(timeCurrent) timeCurrent.innerText = formatTime(current);
-    if(timeTotal) timeTotal.innerText = formatTime(duration);
-}
-
-document.getElementById('realProgressBar')?.addEventListener('click', function(e) {
-    e.preventDefault(); // 🛡️ Evita comportamientos raros del scroll o foco en la barra
-    var rect = this.getBoundingClientRect();
-    var clickX = e.clientX - rect.left;
-    var width = rect.width;
-    var porcentaje = clickX / width;
-    if (duracionCancionActual > 0 && typeof SoundCoreBridge !== "undefined") {
-        var destinoSegundos = Math.floor(porcentaje * duracionCancionActual);
-        SoundCoreBridge.seekToPosition(destinoSegundos);
-    }
-});
-
-// --- 🏎️ FLUX DE INYECCIÓN Y SINCRONIZACIÓN BATERIAL ---
-function lanzarReproduccionNativa(titulo, artista, foto, videoId, artistBrowseId) {
-    browseIdArtistaActual = artistBrowseId;
-
-    var fakePayload = btoa(unescape(encodeURIComponent(JSON.stringify({
-        title: titulo,
-        artist: artista,
-        thumbnail: foto,
-        artistBrowseId: artistBrowseId
-    }))));
-    
-    sincronizarPistaNativa(fakePayload);
-    setPlaybackState(true);
-
-    if (typeof SoundCoreBridge !== "undefined") {
-        SoundCoreBridge.playTrack(videoId);
-    }
-}
-
-function sincronizarPistaNativa(base64Payload) {
-    try {
-        var track = JSON.parse(decodeBase64Utf8(base64Payload));
-        
-        document.getElementById('pTitle').innerText = track.title;
-        document.getElementById('pArtist').innerText = track.artist;
-        if(track.thumbnail && track.thumbnail.trim() !== "") {
-            document.getElementById('pThumb').src = track.thumbnail;
+            var timeCurrent = document.getElementById('timeCurrent');
+            var timeTotal = document.getElementById('timeTotal');
+            if(timeCurrent) timeCurrent.innerText = formatTime(current);
+            if(timeTotal) timeTotal.innerText = formatTime(duration);
         }
-        
-        var playerBar = document.getElementById('playerBar');
-        playerBar.style.display = "flex";
-        playerBar.onclick = function(e) {
-            if (e.target.closest('.play-btn') || e.target.closest('.control-btn')) return;
-            abrirFullPlayer();
+
+        document.getElementById('realProgressBar')?.addEventListener('click', function(e) {
+            e.preventDefault(); 
+            var rect = this.getBoundingClientRect();
+            var clickX = e.clientX - rect.left;
+            var width = rect.width;
+            var porcentaje = clickX / width;
+            if (duracionCancionActual > 0 && typeof SoundCoreBridge !== "undefined") {
+                var destinoSegundos = Math.floor(porcentaje * duracionCancionActual);
+                SoundCoreBridge.seekToPosition(destinoSegundos);
+            }
+        });
+
+        // --- 🏎️ FLUX DE INYECCIÓN Y SINCRONIZACIÓN ---
+        function lanzarReproduccionNativa(titulo, artista, foto, videoId, artistBrowseId) {
+            browseIdArtistaActual = artistBrowseId;
+
+            var fakePayload = btoa(unescape(encodeURIComponent(JSON.stringify({
+                title: titulo,
+                artist: artista,
+                thumbnail: foto,
+                artistBrowseId: artistBrowseId
+            }))));
+            
+            sincronizarPistaNativa(fakePayload);
+            setPlaybackState(true);
+
+            if (typeof SoundCoreBridge !== "undefined") {
+                SoundCoreBridge.playTrack(videoId);
+            }
+        }
+
+        function sincronizarPistaNativa(base64Payload) {
+            try {
+                var track = JSON.parse(decodeBase64Utf8(base64Payload));
+                
+                document.getElementById('pTitle').innerText = track.title;
+                document.getElementById('pArtist').innerText = track.artist;
+                if(track.thumbnail && track.thumbnail.trim() !== "") {
+                    document.getElementById('pThumb').src = track.thumbnail;
+                }
+                
+                var playerBar = document.getElementById('playerBar');
+                playerBar.style.display = "flex";
+                playerBar.onclick = function(e) {
+                    if (e.target.closest('.play-btn') || e.target.closest('.control-btn')) return;
+                    abrirFullPlayer();
+                };
+
+                document.getElementById('fpTitle').innerText = track.title;
+                if(track.thumbnail && track.thumbnail.trim() !== "") {
+                    document.getElementById('fpThumb').src = track.thumbnail;
+                }
+                
+                var fpArtistContainer = document.getElementById('fpArtist');
+                fpArtistContainer.innerHTML = "";
+                var idsArray = track.artistBrowseId ? track.artistBrowseId.split(",") : [];
+
+                if (track.artist.includes(",")) {
+                    var artistasArray = track.artist.split(",");
+                    artistasArray.forEach(function(art, index) {
+                        var nombreLimpio = art.trim();
+                        var bid = idsArray[index] ? idsArray[index].trim() : "";
+                        
+                        var span = document.createElement('span');
+                        span.className = 'fp-individual-artist';
+                        span.innerText = nombreLimpio;
+                        
+                        span.onclick = function(e) {
+                            e.stopPropagation();
+                            cerrarFullPlayer();
+                            if (bid !== "") {
+                                abrirArtistPanelReal(bid, nombreLimpio);
+                            } else {
+                                abrirArtistPanel(nombreLimpio);
+                            }
+                        };
+
+                        fpArtistContainer.appendChild(span);
+                        if (index < artistasArray.length - 1) {
+                            fpArtistContainer.appendChild(document.createTextNode(", "));
+                        }
+                    });
+                } else {
+                    var span = document.createElement('span');
+                    span.className = 'fp-individual-artist';
+                    span.innerText = track.artist;
+                    span.onclick = function(e) {
+                        e.stopPropagation();
+                        cerrarFullPlayer();
+                        var primerId = idsArray[0] ? idsArray[0].trim() : "";
+                        if (primerId !== "") {
+                            abrirArtistPanelReal(primerId, track.artist);
+                        } else {
+                            abrirArtistPanel(track.artist);
+                        }
+                    };
+                    fpArtistContainer.appendChild(span);
+                }
+            } catch(e) {
+                console.error("Error en el acople multimedia de SoundCore: " + e.message);
+            }
+        }
+
+        // --- 🎤 SECCIÓN DE ARTISTAS ---
+        const infoArtistas = {
+            "Kanye West": { banner: "https://images.unsplash.com/photo-1611339555312-e607c8352fd7?q=80&w=600", listeners: "74,103,449" },
+            "Bad Bunny": { banner: "https://images.unsplash.com/photo-1571330735066-03add575afe8?q=80&w=600", listeners: "69,541,200" },
+            "Cartel de Santa": { banner: "https://images.unsplash.com/photo-1524368535928-5b5e00ddc76b?q=80&w=600", listeners: "12,310,450" }
         };
 
-        document.getElementById('fpTitle').innerText = track.title;
-        if(track.thumbnail && track.thumbnail.trim() !== "") {
-            document.getElementById('fpThumb').src = track.thumbnail;
+        function abrirArtistPanel(nombreArtista) {
+            const panel = document.getElementById('artistPanel');
+            const data = infoArtistas[nombreArtista] || { banner: "https://images.unsplash.com/photo-1501386761578-eac5c94b800a?q=80&w=600", listeners: "1,200,500" };
+
+            document.getElementById('apName').innerText = nombreArtista;
+            document.getElementById('apBanner').style.backgroundImage = `url('${data.banner}')`;
+            document.getElementById('apListeners').innerText = data.listeners;
+
+            const container = document.getElementById('artistTracksContainer');
+            container.innerHTML = `<p style="color:var(--text-muted); padding:16px; font-size:13px;">Buscando lanzamientos populares del artista...</p>`;
+            panel.classList.add('open');
         }
-        
-        var fpArtistContainer = document.getElementById('fpArtist');
-        fpArtistContainer.innerHTML = "";
-        var idsArray = track.artistBrowseId ? track.artistBrowseId.split(",") : [];
 
-        if (track.artist.includes(",")) {
-            var artistasArray = track.artist.split(",");
-            artistasArray.forEach(function(art, index) {
-                var nombreLimpio = art.trim();
-                var bid = idsArray[index] ? idsArray[index].trim() : "";
-                
-                var span = document.createElement('span');
-                span.className = 'fp-individual-artist';
-                span.innerText = nombreLimpio;
-                
-                span.onclick = function(e) {
-                    e.stopPropagation();
-                    cerrarFullPlayer();
-                    if (bid !== "") {
-                        abrirArtistPanelReal(bid, nombreLimpio);
-                    } else {
-                        abrirArtistPanel(nombreLimpio);
-                    }
-                };
+        function abrirArtistPanelReal(browseId, nombreArtista) {
+            if (!browseId || browseId === "") {
+                abrirArtistPanel(nombreArtista);
+                return;
+            }
+            var panel = document.getElementById('artistPanel');
+            document.getElementById('apName').innerText = nombreArtista;
+            document.getElementById('apBanner').style.backgroundImage = "none";
+            document.getElementById('apListeners').innerText = "Cargando radar...";
+            
+            var container = document.getElementById('artistTracksContainer');
+            container.innerHTML = "<p style='color:var(--text-muted); text-align:center; padding-top:40px;'>Cargando discografía real... 📡</p>";
+            
+            panel.classList.add('open');
 
-                fpArtistContainer.appendChild(span);
-                if (index < artistasArray.length - 1) {
-                    fpArtistContainer.appendChild(document.createTextNode(", "));
+            if (typeof SoundCoreBridge !== "undefined") {
+                SoundCoreBridge.loadArtistDetails(browseId);
+            }
+        }
+
+        function onArtistDetailsResultEncoded(base64Json) {
+            try {
+                var data = JSON.parse(decodeBase64Utf8(base64Json));
+                
+                if (data.name && data.name.trim() !== "") {
+                    document.getElementById('apName').innerText = data.name;
                 }
-            });
-        } else {
-            var span = document.createElement('span');
-            span.className = 'fp-individual-artist';
-            span.innerText = track.artist;
-            span.onclick = function(e) {
-                e.stopPropagation();
-                cerrarFullPlayer();
-                var primerId = idsArray[0] ? idsArray[0].trim() : "";
-                if (primerId !== "") {
-                    abrirArtistPanelReal(primerId, track.artist);
+                
+                if (data.thumbnail && data.thumbnail.trim() !== "") {
+                    document.getElementById('apBanner').style.backgroundImage = `url('${data.thumbnail}')`;
+                }
+                
+                document.getElementById('apListeners').innerText = "Perfil Oficial de InnerTube";
+                
+                var container = document.getElementById('artistTracksContainer');
+                container.innerHTML = "";
+                
+                var fragment = document.createDocumentFragment();
+
+                if(data.tracks && data.tracks.length > 0) {
+                    data.tracks.forEach(function(track) {
+                        var div = document.createElement('div');
+                        div.className = 'track-item';
+                        div.style.cursor = 'pointer';
+                        div.onclick = function() { 
+                            lanzarReproduccionNativa(track.title, track.artist, track.thumbnail, track.id, track.artistBrowseId || ""); 
+                        };
+                        div.innerHTML = `
+                            <img src="${track.thumbnail}" style="width:44px; height:44px; border-radius:6px; margin-right:12px; object-fit:cover;" onerror="this.src='https://placehold.co/50x50/111/fff?text=Music'">
+                            <div class="track-info">
+                                <div class="track-title" style="font-size:14px; font-weight:500;">${track.title}</div>
+                                <div class="track-artist" style="font-size:12px; color:var(--text-muted);">${track.artist}</div>
+                            </div>
+                            <i class="fa-solid fa-play" style="color:var(--text-muted); font-size:11px; margin-right:10px;"></i>
+                        `;
+                        fragment.appendChild(div);
+                    });
                 } else {
-                    abrirArtistPanel(track.artist);
+                    var p = document.createElement('p');
+                    p.style.cssText = "color:var(--text-muted); padding:16px; font-size:13px;";
+                    p.innerText = "No se encontraron lanzamientos disponibles.";
+                    fragment.appendChild(p);
                 }
-            };
-            fpArtistContainer.appendChild(span);
-        }
-    } catch(e) {
-        console.error("Error en el acople multimedia de SoundCore: " + e.message);
-    }
-}
 
-// --- 🎤 SECCIÓN DE ARTISTAS ---
-const infoArtistas = {
-    "Kanye West": { banner: "https://images.unsplash.com/photo-1611339555312-e607c8352fd7?q=80&w=600", listeners: "74,103,449" },
-    "Bad Bunny": { banner: "https://images.unsplash.com/photo-1571330735066-03add575afe8?q=80&w=600", listeners: "69,541,200" },
-    "Cartel de Santa": { banner: "https://images.unsplash.com/photo-1524368535928-5b5e00ddc76b?q=80&w=600", listeners: "12,310,450" }
-};
+                if(data.albums && data.albums.length > 0) {
+                    var tituloAlbumes = document.createElement('div');
+                    tituloAlbumes.className = 'section-title';
+                    tituloAlbumes.style.cssText = 'padding: 0 16px; margin-top: 25px; margin-bottom: 12px;';
+                    tituloAlbumes.innerText = 'Álbumes y Sencillos';
+                    fragment.appendChild(tituloAlbumes);
 
-function abrirArtistPanel(nombreArtista) {
-    const panel = document.getElementById('artistPanel');
-    const data = infoArtistas[nombreArtista] || { banner: "https://images.unsplash.com/photo-1501386761578-eac5c94b800a?q=80&w=600", listeners: "1,200,500" };
+                    var gridAlbumes = document.createElement('div');
+                    gridAlbumes.className = 'suggested-grid';
+                    gridAlbumes.style.cssText = 'padding: 0 16px 30px 16px; display: grid; grid-template-columns: repeat(2, 1fr); gap: 16px;';
 
-    document.getElementById('apName').innerText = nombreArtista;
-    document.getElementById('apBanner').style.backgroundImage = `url('${data.banner}')`;
-    document.getElementById('apListeners').innerText = data.listeners;
+                    data.albums.forEach(function(album) {
+                        var card = document.createElement('div');
+                        card.className = 'suggested-card';
+                        card.style.cursor = 'pointer';
+                        card.onclick = function() {
+                            alert("Cargando lista del álbum: " + album.title + " 💿");
+                        };
+                        card.innerHTML = `
+                            <img src="${album.thumbnail}" alt="cover" style="width:100%; aspect-ratio:1/1; border-radius:10px; object-fit:cover;" onerror="this.src='https://placehold.co/100x100/111/fff?text=Disco'">
+                            <div class="card-title" style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-size:14px; font-weight:500; margin-top:8px;">${album.title}</div>
+                            <div class="card-artist" style="font-size:12px; color:var(--text-muted);">${album.year ? album.year : 'Álbum'}</div>
+                        `;
+                        gridAlbumes.appendChild(card);
+                    });
+                    fragment.appendChild(gridAlbumes);
+                }
 
-    const container = document.getElementById('artistTracksContainer');
-    container.innerHTML = `<p style="color:var(--text-muted); padding:16px; font-size:13px;">Buscando lanzamientos populares del artista...</p>`;
-    panel.classList.add('open');
-}
+                container.appendChild(fragment);
 
-function abrirArtistPanelReal(browseId, nombreArtista) {
-    if (!browseId || browseId === "") {
-        abrirArtistPanel(nombreArtista);
-        return;
-    }
-    var panel = document.getElementById('artistPanel');
-    document.getElementById('apName').innerText = nombreArtista;
-    document.getElementById('apBanner').style.backgroundImage = "none";
-    document.getElementById('apListeners').innerText = "Cargando radar...";
-    
-    var container = document.getElementById('artistTracksContainer');
-    container.innerHTML = "<p style='color:var(--text-muted); text-align:center; padding-top:40px;'>Cargando discografía real... 📡</p>";
-    
-    panel.classList.add('open');
-
-    if (typeof SoundCoreBridge !== "undefined") {
-        SoundCoreBridge.loadArtistDetails(browseId);
-    }
-}
-
-function onArtistDetailsResultEncoded(base64Json) {
-    try {
-        var data = JSON.parse(decodeBase64Utf8(base64Json));
-        
-        if (data.name && data.name.trim() !== "") {
-            document.getElementById('apName').innerText = data.name;
-        }
-        
-        if (data.thumbnail && data.thumbnail.trim() !== "") {
-            document.getElementById('apBanner').style.backgroundImage = `url('${data.thumbnail}')`;
-        }
-        
-        document.getElementById('apListeners').innerText = "Perfil Oficial de InnerTube";
-        
-        var container = document.getElementById('artistTracksContainer');
-        container.innerHTML = "";
-        
-        var fragment = document.createDocumentFragment();
-
-        // 1. RENDERIZAR CANCIONES POPULARES
-        if(data.tracks && data.tracks.length > 0) {
-            data.tracks.forEach(function(track) {
-                var div = document.createElement('div');
-                div.className = 'track-item';
-                div.style.cursor = 'pointer';
-                div.onclick = function() { 
-                    lanzarReproduccionNativa(track.title, track.artist, track.thumbnail, track.id, track.artistBrowseId || ""); 
-                };
-                div.innerHTML = `
-                    <img src="${track.thumbnail}" style="width:44px; height:44px; border-radius:6px; margin-right:12px; object-fit:cover;" onerror="this.src='https://placehold.co/50x50/111/fff?text=Music'">
-                    <div class="track-info">
-                        <div class="track-title" style="font-size:14px; font-weight:500;">${track.title}</div>
-                        <div class="track-artist" style="font-size:12px; color:var(--text-muted);">${track.artist}</div>
-                    </div>
-                    <i class="fa-solid fa-play" style="color:var(--text-muted); font-size:11px; margin-right:10px;"></i>
-                `;
-                fragment.appendChild(div);
-            });
-        } else {
-            var p = document.createElement('p');
-            p.style.cssText = "color:var(--text-muted); padding:16px; font-size:13px;";
-            p.innerText = "No se encontraron lanzamientos disponibles.";
-            fragment.appendChild(p);
+            } catch(e) {
+                onArtistDetailsError(e.message);
+            }
         }
 
-        // 2. RENDERIZAR ÁLBUMES Y SENCILLOS
-        if(data.albums && data.albums.length > 0) {
-            var tituloAlbumes = document.createElement('div');
-            tituloAlbumes.className = 'section-title';
-            tituloAlbumes.style.cssText = 'padding: 0 16px; margin-top: 25px; margin-bottom: 12px;';
-            tituloAlbumes.innerText = 'Álbumes y Sencillos';
-            fragment.appendChild(tituloAlbumes);
-
-            var gridAlbumes = document.createElement('div');
-            gridAlbumes.className = 'suggested-grid';
-            gridAlbumes.style.cssText = 'padding: 0 16px 30px 16px; display: grid; grid-template-columns: repeat(2, 1fr); gap: 16px;';
-
-            data.albums.forEach(function(album) {
-                var card = document.createElement('div');
-                card.className = 'suggested-card';
-                card.style.cursor = 'pointer';
-                card.onclick = function() {
-                    alert("Cargando lista del álbum: " + album.title + " 💿");
-                };
-                card.innerHTML = `
-                    <img src="${album.thumbnail}" alt="cover" style="width:100%; aspect-ratio:1/1; border-radius:10px; object-fit:cover;" onerror="this.src='https://placehold.co/100x100/111/fff?text=Disco'">
-                    <div class="card-title" style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-size:14px; font-weight:500; margin-top:8px;">${album.title}</div>
-                    <div class="card-artist" style="font-size:12px; color:var(--text-muted);">${album.year ? album.year : 'Álbum'}</div>
-                `;
-                gridAlbumes.appendChild(card);
-            });
-            fragment.appendChild(gridAlbumes);
+        function onArtistDetailsError(msg) {
+            document.getElementById('apListeners').innerText = "Fallo de conexión";
+            var container = document.getElementById('artistTracksContainer');
+            container.innerHTML = `
+                <div style='text-align:center; padding:40px 16px;'>
+                    <i class="fa-solid fa-triangle-exclamation" style="font-size:30px; color:#ff5555; margin-bottom:12px;"></i>
+                    <p style='color:var(--text-muted); font-size:14px;'>No se pudo obtener la información de InnerTube.</p>
+                    <p style='color:#ff5555; font-size:11px; margin-top:4px;'>Detalle: ${msg}</p>
+                </div>`;
         }
 
-        container.appendChild(fragment);
+        // --- 💾 SIMULACIÓN DE BIBLIOTECA ---
+        function crearPlaylistSimulada() {
+            let nombre = prompt("Nombre de tu nueva Playlist:", "Mix Perrón " + (++contadorPlaylists));
+            if (!nombre || nombre.trim() === "") return;
 
-    } catch(e) {
-        onArtistDetailsError(e.message);
-    }
-}
+            const emptyState = document.getElementById('empty-library-state');
+            if (emptyState) emptyState.style.display = 'none';
 
-function onArtistDetailsError(msg) {
-    document.getElementById('apListeners').innerText = "Fallo de conexión";
-    var container = document.getElementById('artistTracksContainer');
-    container.innerHTML = `
-        <div style='text-align:center; padding:40px 16px;'>
-            <i class="fa-solid fa-triangle-exclamation" style="font-size:30px; color:#ff5555; margin-bottom:12px;"></i>
-            <p style='color:var(--text-muted); font-size:14px;'>No se pudo obtener la información de InnerTube.</p>
-            <p style='color:#ff5555; font-size:11px; margin-top:4px;'>Detalle: ${msg}</p>
-        </div>`;
-}
-
-// --- 💾 SIMULACIÓN DE BIBLIOTECA ---
-function crearPlaylistSimulada() {
-    let nombre = prompt("Nombre de tu nueva Playlist:", "Mix Perrón " + (++contadorPlaylists));
-    if (!nombre || nombre.trim() === "") return;
-
-    const emptyState = document.getElementById('empty-library-state');
-    if (emptyState) emptyState.style.display = 'none';
-
-    const container = document.getElementById('playlist-container');
-    const div = document.createElement('div');
-    div.className = 'track-item';
-    div.innerHTML = `
-        <div class="menu-icon-wrapper" style="background: #141414; border-radius: 10px; width: 52px; height: 52px; display:flex; align-items:center; justify-content:center; border: 1px solid var(--border-color);">
-            <i class="fa-solid fa-music" style="color: #8e8e93;"></i>
-        </div>
-        <div class="track-info">
-            <div class="track-title">${nombre}</div>
-            <div class="track-artist">Creada por ti • 0 canciones</div>
-        </div>
-        <i class="fa-solid fa-chevron-right" style="color: #2c2c2e; font-size: 12px; margin-right: 5px;"></i>
-    `;
-    container.appendChild(div);
-}
-</script>
+            const container = document.getElementById('playlist-container');
+            const div = document.createElement('div');
+            div.className = 'track-item';
+            div.innerHTML = `
+                <div class="menu-icon-wrapper" style="background: #141414; border-radius: 10px; width: 52px; height: 52px; display:flex; align-items:center; justify-content:center; border: 1px solid var(--border-color);">
+                    <i class="fa-solid fa-music" style="color: #8e8e93;"></i>
+                </div>
+                <div class="track-info">
+                    <div class="track-title">${nombre}</div>
+                    <div class="track-artist">Creada por ti • 0 canciones</div>
+                </div>
+                <i class="fa-solid fa-chevron-right" style="color: #2c2c2e; font-size: 12px; margin-right: 5px;"></i>
+            `;
+            container.appendChild(div);
+        }
+    </script>
 </body>
 </html>
