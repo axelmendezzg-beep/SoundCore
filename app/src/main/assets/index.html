@@ -529,6 +529,15 @@
                 console.error("Error en el acople multimedia de SoundCore: " + e.message);
             }
         }
+// --- 🔄 RECEPTOR EXCLUSIVO PARA CAMBIOS DE PISTA NATIVOS ---
+function onTrackChangedFromNative(base64Payload) {
+    try {
+        // Reutilizamos la lógica robusta de sincronización que ya armaste
+        sincronizarPistaNativa(base64Payload);
+    } catch (e) {
+        console.error("Error sincronizando cambio de pista nativo: " + e.message);
+    }
+}
 
         // --- 🎤 SECCIÓN DE ARTISTAS ---
         const infoArtistas = {

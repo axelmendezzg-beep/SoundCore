@@ -50,9 +50,39 @@ class SoundCoreActivity : ComponentActivity() {
                     Toast.makeText(this@SoundCoreActivity, "¡Sistemas nativos acoplados! 🏎️", Toast.LENGTH_SHORT).show()
                 }
 
+                // Sincroniza el estado de reproducción (Play/Pause)
                 activityScope.launch {
                     conn.isPlaying.collectLatest { playing ->
                         webView.loadUrl("javascript:setPlaybackState($playing)")
+                    }
+                }
+
+                // 🔥 LA CLAVE: Sincroniza la pista actual cuando cambia desde el sistema o notificación
+                activityScope.launch {
+                    conn.currentItem.collectLatest { mediaItem ->
+                        if (mediaItem != null) {
+                            // Extraemos metadatos limpios del objeto multimedia nativo
+                            val title = mediaItem.mediaMetadata.title?.toString()?.replace("\"", "\\\"") ?: "Desconocido"
+                            val artist = mediaItem.mediaMetadata.artist?.toString()?.replace("\"", "\\\"") ?: "Artista Desconocido"
+                            val thumbnail = mediaItem.mediaMetadata.artworkUri?.toString() ?: ""
+                            
+                            // Si guardas el ID de artista en los extras del MediaItem, búscalo; si no, dejamos vacío el fallback inicial
+                            val artistBrowseId = mediaItem.mediaId ?: "" 
+
+                            val json = """
+                                {
+                                    "title": "$title",
+                                    "artist": "$artist",
+                                    "thumbnail": "$thumbnail",
+                                    "artistBrowseId": "$artistBrowseId"
+                                }
+                            """.trimIndent()
+
+                            val base64Json = Base64.encodeToString(json.toByteArray(Charsets.UTF_8), Base64.NO_WRAP)
+                            runOnUiThread {
+                                webView.loadUrl("javascript:onTrackChangedFromNative('$base64Json')")
+                            }
+                        }
                     }
                 }
 
@@ -199,7 +229,6 @@ class SoundCoreActivity : ComponentActivity() {
             val rawId = browseId.trim()
             if (rawId.isEmpty()) return
             
-            // 🛡️ LIMPIEZA ABSOLUTA: Si vienen múltiples IDs enlazados por comas, nos quedamos solo con el primero
             val cleanArtistId = if (rawId.contains(",")) {
                 rawId.split(",").firstOrNull { it.trim().isNotEmpty() }?.trim() ?: rawId
             } else {
@@ -207,7 +236,6 @@ class SoundCoreActivity : ComponentActivity() {
             }
 
             activityScope.launch(Dispatchers.IO) {
-                // Se invoca el método nativo directamente con el ID limpio como hace Arturo
                 YouTube.artist(cleanArtistId).onSuccess { artistPage ->
                     val nombreReal = artistPage.artist.title.replace("\"", "\\\"")
                     val fotoReal = artistPage.artist.thumbnail ?: ""
@@ -260,3 +288,4 @@ class SoundCoreActivity : ComponentActivity() {
         }
     }
 }
+
