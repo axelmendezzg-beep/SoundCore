@@ -288,15 +288,25 @@
         </div>
     </nav>
 <script>
+        // --- 📊 VARIABLES GLOBALES DE ESTADO ---
         var duracionCancionActual = 0;
         var browseIdArtistaActual = "";
+        let contadorPlaylists = 0;
 
+        // --- 🛠️ UTILIDADES DE DECODIFICACIÓN ---
         function decodeBase64Utf8(base64) {
             return decodeURIComponent(Array.prototype.map.call(atob(base64), function(c) {
                 return '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2);
             }).join(''));
         }
 
+        function formatTime(seconds) {
+            var min = Math.floor(seconds / 60);
+            var sec = Math.floor(seconds % 60);
+            return min + ":" + (sec < 10 ? "0" : "") + sec;
+        }
+
+        // --- 🗺️ NAVEGACIÓN Y VISTAS ---
         function cambiarPestaña(vista) {
             document.querySelectorAll('.app-view').forEach(v => v.classList.remove('active'));
             document.querySelectorAll('.nav-item').forEach(t => t.classList.remove('active'));
@@ -305,6 +315,18 @@
             document.getElementById(`tab-${vista}`).classList.add('active');
         }
 
+        function abrirFullPlayer() { document.getElementById('fullPlayer').classList.add('open'); }
+        function cerrarFullPlayer() { document.getElementById('fullPlayer').classList.remove('open'); }
+        function abrirConfigPanel() { document.getElementById('configPanel').classList.add('open'); }
+        function cerrarConfigPanel() { document.getElementById('configPanel').classList.remove('open'); }
+        function cerrarArtistPanel() { document.getElementById('artistPanel').classList.remove('open'); }
+        
+        function filtrarCategoria(categoria) {
+            document.querySelectorAll('.chip').forEach(c => c.classList.remove('active'));
+            event.currentTarget.classList.add('active');
+        }
+
+        // --- 📡 MOTOR DE BÚSQUEDA ---
         function dispararBusquedaReal() {
             var query = document.getElementById('queryInput').value;
             if(query.trim() !== "") {
@@ -353,82 +375,9 @@
             }
         }
 
+        // --- ⚡ CONTROLES Y REPRODUCCIÓN MULTIMEDIA ---
         function reproducirSugerida(titulo, artista, foto, videoId) {
             lanzarReproduccionNativa(titulo, artista, foto, videoId, "");
-        }
-
-        // REPRODUCCIÓN NATIVA: Mapea y sincroniza múltiples IDs con múltiples colaboradores
-        function lanzarReproduccionNativa(titulo, artista, foto, videoId, artistBrowseId) {
-            browseIdArtistaActual = artistBrowseId;
-
-            document.getElementById('pTitle').innerText = titulo;
-            document.getElementById('pArtist').innerText = artista;
-            document.getElementById('pThumb').src = foto;
-            document.getElementById('playerBar').style.display = "flex";
-            
-            document.getElementById('playerBar').onclick = function(e) {
-                if (e.target.closest('.play-btn')) return;
-                abrirFullPlayer();
-            };
-
-            document.getElementById('fpTitle').innerText = titulo;
-            
-            var fpArtistContainer = document.getElementById('fpArtist');
-            fpArtistContainer.innerHTML = "";
-
-            // Convertimos la cadena de IDs que viene de la lista separada por comas de Kotlin en un array real
-            var idsArray = artistBrowseId ? artistBrowseId.split(",") : [];
-
-            if (artista.includes(",")) {
-                var artistasArray = artista.split(",");
-                artistasArray.forEach(function(art, index) {
-                    var nombreLimpio = art.trim();
-                    // Extrae el ID correspondiente de la misma posición de este artista
-                    var bid = idsArray[index] ? idsArray[index].trim() : "";
-                    
-                    var span = document.createElement('span');
-                    span.className = 'fp-individual-artist';
-                    span.innerText = nombreLimpio;
-                    
-                    span.onclick = function(e) {
-                        e.stopPropagation();
-                        cerrarFullPlayer();
-                        // Si existe un ID nativo cargado desde Kotlin para este colaborador, entra a su radar real
-                        if (bid !== "") {
-                            abrirArtistPanelReal(bid, nombreLimpio);
-                        } else {
-                            abrirArtistPanel(nombreLimpio);
-                        }
-                    };
-
-                    fpArtistContainer.appendChild(span);
-                    if (index < artistasArray.length - 1) {
-                        fpArtistContainer.appendChild(document.createTextNode(", "));
-                    }
-                });
-            } else {
-                var span = document.createElement('span');
-                span.className = 'fp-individual-artist';
-                span.innerText = artista;
-                span.onclick = function(e) {
-                    e.stopPropagation();
-                    cerrarFullPlayer();
-                    var primerId = idsArray[0] ? idsArray[0].trim() : "";
-                    if (primerId !== "") {
-                        abrirArtistPanelReal(primerId, artista);
-                    } else {
-                        abrirArtistPanel(artista);
-                    }
-                };
-                fpArtistContainer.appendChild(span);
-            }
-
-            document.getElementById('fpThumb').src = foto;
-            setPlaybackState(true);
-
-            if (typeof SoundCoreBridge !== "undefined") {
-                SoundCoreBridge.playTrack(videoId);
-            }
         }
 
         function togglePlaySimulado() {
@@ -455,12 +404,6 @@
             }
         }
 
-        function formatTime(seconds) {
-            var min = Math.floor(seconds / 60);
-            var sec = Math.floor(seconds % 60);
-            return min + ":" + (sec < 10 ? "0" : "") + sec;
-        }
-
         function updatePlaybackProgress(current, duration) {
             duracionCancionActual = duration; 
             var porcentaje = (current / duration) * 100;
@@ -481,20 +424,105 @@
             }
         });
 
-        function abrirFullPlayer() { document.getElementById('fullPlayer').classList.add('open'); }
-        function cerrarFullPlayer() { document.getElementById('fullPlayer').classList.remove('open'); }
-        function abrirConfigPanel() { document.getElementById('configPanel').classList.add('open'); }
-        function cerrarConfigPanel() { document.getElementById('configPanel').classList.remove('open'); }
+        // --- 🏎️ FLUX DE INYECCIÓN Y SINCRONIZACIÓN BATERIAL ---
         
-        function cerrarArtistPanel() { 
-            document.getElementById('artistPanel').classList.remove('open'); 
+        // Lanzamiento inicial desde la Grid de la interfaz
+        function lanzarReproduccionNativa(titulo, artista, foto, videoId, artistBrowseId) {
+            browseIdArtistaActual = artistBrowseId;
+
+            // Construir un payload manual simulado para unificar la vía de renderizado
+            var fakePayload = btoa(unescape(encodeURIComponent(JSON.stringify({
+                title: titulo,
+                artist: artista,
+                thumbnail: foto,
+                artistBrowseId: artistBrowseId
+            }))));
+            
+            // Sincroniza la UI inmediatamente antes de que el motor responda
+            sincronizarPistaNativa(fakePayload);
+            setPlaybackState(true);
+
+            if (typeof SoundCoreBridge !== "undefined") {
+                SoundCoreBridge.playTrack(videoId);
+            }
         }
 
-        function filtrarCategoria(categoria) {
-            document.querySelectorAll('.chip').forEach(c => c.classList.remove('active'));
-            event.currentTarget.classList.add('active');
+        // 🔥 ESCUCHA EN TIEMPO REAL: Se ejecuta cuando YT salta de rola automáticamente en Android
+        function sincronizarPistaNativa(base64Payload) {
+            try {
+                var track = JSON.parse(decodeBase64Utf8(base64Payload));
+                
+                // 1. Sincronizar Mini-Player flotante
+                document.getElementById('pTitle').innerText = track.title;
+                document.getElementById('pArtist').innerText = track.artist;
+                if(track.thumbnail && track.thumbnail.trim() !== "") {
+                    document.getElementById('pThumb').src = track.thumbnail;
+                }
+                document.getElementById('playerBar').style.display = "flex";
+                
+                document.getElementById('playerBar').onclick = function(e) {
+                    if (e.target.closest('.play-btn')) return;
+                    abrirFullPlayer();
+                };
+
+                // 2. Sincronizar Full Player principal
+                document.getElementById('fpTitle').innerText = track.title;
+                if(track.thumbnail && track.thumbnail.trim() !== "") {
+                    document.getElementById('fpThumb').src = track.thumbnail;
+                }
+                
+                // 3. Mapeo Dinámico de Colaboradores de la rola activa
+                var fpArtistContainer = document.getElementById('fpArtist');
+                fpArtistContainer.innerHTML = "";
+                var idsArray = track.artistBrowseId ? track.artistBrowseId.split(",") : [];
+
+                if (track.artist.includes(",")) {
+                    var artistasArray = track.artist.split(",");
+                    artistasArray.forEach(function(art, index) {
+                        var nombreLimpio = art.trim();
+                        var bid = idsArray[index] ? idsArray[index].trim() : "";
+                        
+                        var span = document.createElement('span');
+                        span.className = 'fp-individual-artist';
+                        span.innerText = nombreLimpio;
+                        
+                        span.onclick = function(e) {
+                            e.stopPropagation();
+                            cerrarFullPlayer();
+                            if (bid !== "") {
+                                abrirArtistPanelReal(bid, nombreLimpio);
+                            } else {
+                                abrirArtistPanel(nombreLimpio);
+                            }
+                        };
+
+                        fpArtistContainer.appendChild(span);
+                        if (index < artistasArray.length - 1) {
+                            fpArtistContainer.appendChild(document.createTextNode(", "));
+                        }
+                    });
+                } else {
+                    var span = document.createElement('span');
+                    span.className = 'fp-individual-artist';
+                    span.innerText = track.artist;
+                    span.onclick = function(e) {
+                        e.stopPropagation();
+                        cerrarFullPlayer();
+                        var primerId = idsArray[0] ? idsArray[0].trim() : "";
+                        if (primerId !== "") {
+                            abrirArtistPanelReal(primerId, track.artist);
+                        } else {
+                            abrirArtistPanel(track.artist);
+                        }
+                    };
+                    fpArtistContainer.appendChild(span);
+                }
+            } catch(e) {
+                console.error("Error en el acople multimedia de SoundCore: " + e.message);
+            }
         }
 
+        // --- 🎤 SECCIÓN DE ARTISTAS (HISTORIAL NATIVO / CACHÉ) ---
         const infoArtistas = {
             "Kanye West": { banner: "https://images.unsplash.com/photo-1611339555312-e607c8352fd7?q=80&w=600", listeners: "74,103,449" },
             "Bad Bunny": { banner: "https://images.unsplash.com/photo-1571330735066-03add575afe8?q=80&w=600", listeners: "69,541,200" },
@@ -534,11 +562,10 @@
             }
         }
 
-                function onArtistDetailsResultEncoded(base64Json) {
+        function onArtistDetailsResultEncoded(base64Json) {
             try {
                 var data = JSON.parse(decodeBase64Utf8(base64Json));
                 
-                // 🔥 SOLUCIÓN AL PARPADEO: Validamos que no vengan vacíos antes de pintar
                 if (data.name && data.name.trim() !== "") {
                     document.getElementById('apName').innerText = data.name;
                 }
@@ -552,7 +579,6 @@
                 var container = document.getElementById('artistTracksContainer');
                 container.innerHTML = "";
                 
-                // 1. RENDERIZAR CANCIONES POPULARES
                 if(data.tracks && data.tracks.length > 0) {
                     data.tracks.forEach(function(track) {
                         var div = document.createElement('div');
@@ -575,7 +601,6 @@
                     container.innerHTML = "<p style='color:var(--text-muted); padding:16px; font-size:13px;'>No se encontraron lanzamientos disponibles.</p>";
                 }
 
-                // 2. RENDERIZAR ÁLBUMES Y SENCILLOS (MAQUEADO NATIVO)
                 if(data.albums && data.albums.length > 0) {
                     var tituloAlbumes = document.createElement('div');
                     tituloAlbumes.className = 'section-title';
@@ -609,8 +634,7 @@
             }
         }
 
-
-        let contadorPlaylists = 0;
+        // --- 💾 SIMULACIÓN DE BIBLIOTECA ---
         function crearPlaylistSimulada() {
             let nombre = prompt("Nombre de tu nueva Playlist:", "Mix Perrón " + (++contadorPlaylists));
             if (!nombre || nombre.trim() === "") return;

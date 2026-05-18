@@ -49,9 +49,31 @@ class SoundCoreActivity : ComponentActivity() {
                     Toast.makeText(this@SoundCoreActivity, "¡Sistemas nativos acoplados! 🏎️", Toast.LENGTH_SHORT).show()
                 }
 
+                // 📡 Escuchar si se pausa o se reproduce
                 activityScope.launch {
                     conn.isPlaying.collectLatest { playing ->
                         webView.loadUrl("javascript:setPlaybackState($playing)")
+                    }
+                }
+
+                // ⚡ NUEVO: Interceptor de pistas en tiempo real (Soluciona el congelamiento del reproductor)
+                activityScope.launch {
+                    conn.currentMediaItem.collectLatest { mediaItem ->
+                        if (mediaItem != null) {
+                            val title = mediaItem.mediaMetadata.title?.toString()?.replace("\"", "\\\"") ?: "Desconocido"
+                            val artist = mediaItem.mediaMetadata.artist?.toString()?.replace("\"", "\\\"") ?: "Artista Desconocido"
+                            val thumbnail = mediaItem.mediaMetadata.artworkUri?.toString() ?: ""
+                            
+                            // Intentar recuperar los IDs de los artistas si están guardados en los extras
+                            val artistBrowseId = mediaItem.mediaId ?: ""
+
+                            val jsonPayload = "{\"title\":\"$title\",\"artist\":\"$artist\",\"thumbnail\":\"$thumbnail\",\"artistBrowseId\":\"$artistBrowseId\"}"
+                            val base64Payload = Base64.encodeToString(jsonPayload.toByteArray(Charsets.UTF_8), Base64.NO_WRAP)
+                            
+                            runOnUiThread {
+                                webView.loadUrl("javascript:sincronizarPistaNativa('$base64Payload')")
+                            }
+                        }
                     }
                 }
 
@@ -193,13 +215,11 @@ class SoundCoreActivity : ComponentActivity() {
             }
         }
 
-        // --- 🎤 MÉTODO NATIVO CORREGIDO MEDIANTE ESTRUCTURA INTERNA DE ARCHIVETUNE ---
         @JavascriptInterface
         fun loadArtistDetails(browseId: String) {
             if (browseId.isEmpty()) return
             activityScope.launch(Dispatchers.IO) {
                 YouTube.artist(browseId).onSuccess { artistPage ->
-                    // Extracción mapeada limpia usando el sub-objeto 'artist' (ArtistItem)
                     val nombreReal = artistPage.artist.title.replace("\"", "\\\"")
                     val fotoReal = artistPage.artist.thumbnail ?: ""
                     
