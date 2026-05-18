@@ -4,14 +4,15 @@ import kotlinx.serialization.Serializable
 
 @Serializable
 data class ThumbnailRenderer(
-    val musicThumbnailRenderer: MusicThumbnailRenderer?,
+    val musicThumbnailRenderer: MusicThumbnailRenderer? = null,
+    val croppedSquareThumbnailRenderer: MusicThumbnailRenderer? = null,
 ) {
     @Serializable
     data class MusicThumbnailRenderer(
         val thumbnail: Thumbnails,
         val thumbnailCrop: String? = null,
         val thumbnailScale: String? = null,
-        val trackingParams: String,
+        val trackingParams: String? = null,
     ) {
         fun getThumbnailUrl(): String? {
             val urlOriginal = thumbnail.thumbnails.lastOrNull()?.url ?: return null
