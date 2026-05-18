@@ -3,9 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>SoundCore App</title>
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
-    <link rel="stylesheet" href="css/style.css">
+    <title>SoundCore Player</title>
     <style>
         /* Parches rápidos de capas para asegurar que el reproductor mini flote sobre todo */
         .player-bar {
@@ -43,11 +41,11 @@
         </div>
 
         <div class="filter-chips">
-            <div class="chip active" onclick="filtrarCategoria('todas')">Todo</div>
-            <div class="chip" onclick="filtrarCategoria('podcast')">Podcasts</div>
-            <div class="chip" onclick="filtrarCategoria('fiesta')">Fiesta</div>
-            <div class="chip" onclick="filtrarCategoria('relax')">Relax</div>
-            <div class="chip" onclick="filtrarCategoria('energia')">Energía</div>
+            <div class="chip active" onclick="filtrarCategoria('todas', event)">Todo</div>
+            <div class="chip" onclick="filtrarCategoria('podcast', event)">Podcasts</div>
+            <div class="chip" onclick="filtrarCategoria('fiesta', event)">Fiesta</div>
+            <div class="chip" onclick="filtrarCategoria('relax', event)">Relax</div>
+            <div class="chip" onclick="filtrarCategoria('energia', event)">Energía</div>
         </div>
         
         <div class="section-title">Escuchando Recientemente</div>
@@ -64,7 +62,7 @@
                 <div class="card-artist">Bad Bunny</div>
             </div>
             <div class="suggested-card" onclick="reproducirSugerida('Éxtasis', 'Cartel de Santa', 'https://i.scdn.co/image/ab67616d0000b2739199d799052069726cb3b9a0', 'fN97v_n7PZ8')">
-                <img src="https://i.unsplash.com/image/ab67616d0000b2739199d799052069726cb3b9a0" alt="cover">
+                <img src="https://i.scdn.co/image/ab67616d0000b2739199d799052069726cb3b9a0" alt="cover">
                 <div class="card-title">Éxtasis</div>
                 <div class="card-artist">Cartel de Santa</div>
             </div>
@@ -287,234 +285,247 @@
             <span class="nav-label">Biblioteca</span>
         </div>
     </nav>
-<script>
-        // --- 📊 VARIABLES GLOBALES DE ESTADO ---
-        var duracionCancionActual = 0;
-        var browseIdArtistaActual = "";
-        let contadorPlaylists = 0;
+    <script>
+// --- 📊 VARIABLES GLOBALES DE ESTADO ---
+var duracionCancionActual = 0;
+var browseIdArtistaActual = "";
+let contadorPlaylists = 0;
 
-        // --- 🛠️ UTILIDADES DE DECODIFICACIÓN ---
-        function decodeBase64Utf8(base64) {
-            return decodeURIComponent(Array.prototype.map.call(atob(base64), function(c) {
-                return '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2);
-            }).join(''));
+// --- 🛠️ UTILIDADES DE DECODIFICACIÓN ---
+function decodeBase64Utf8(base64) {
+    return decodeURIComponent(Array.prototype.map.call(atob(base64), function(c) {
+        return '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2);
+    }).join(''));
+}
+
+function formatTime(seconds) {
+    var min = Math.floor(seconds / 60);
+    var sec = Math.floor(seconds % 60);
+    return min + ":" + (sec < 10 ? "0" : "") + sec;
+}
+
+// --- 🗺️ NAVEGACIÓN Y VISTAS ---
+function cambiarPestaña(vista) {
+    document.querySelectorAll('.app-view').forEach(v => v.classList.remove('active'));
+    document.querySelectorAll('.nav-item').forEach(t => t.classList.remove('active'));
+
+    document.getElementById(`view-${vista}`).classList.add('active');
+    document.getElementById(`tab-${vista}`).classList.add('active');
+}
+
+function abrirFullPlayer() { document.getElementById('fullPlayer').classList.add('open'); }
+function cerrarFullPlayer() { document.getElementById('fullPlayer').classList.remove('open'); }
+function abrirConfigPanel() { document.getElementById('configPanel').classList.add('open'); }
+function cerrarConfigPanel() { document.getElementById('configPanel').classList.remove('open'); }
+function cerrarArtistPanel() { document.getElementById('artistPanel').classList.remove('open'); }
+
+// 🛠️ CORRECCIÓN: Se añade el parámetro 'e' para evitar caídas en el WebView de Android
+function filtrarCategoria(categoria, e) {
+    document.querySelectorAll('.chip').forEach(c => c.classList.remove('active'));
+    if (e && e.currentTarget) {
+        e.currentTarget.classList.add('active');
+    } else if (window.event) {
+        window.event.currentTarget.classList.add('active');
+    }
+}
+
+// --- 📡 MOTOR DE BÚSQUEDA ---
+function dispararBusquedaReal() {
+    var query = document.getElementById('queryInput').value;
+    if(query.trim() !== "") {
+        document.getElementById('resultados').innerHTML = "<p style='color:var(--text-muted); text-align:center; padding-top: 50px;'>Buscando en el motor nativo... 📡</p>";
+        if (typeof SoundCoreBridge !== "undefined") {
+            SoundCoreBridge.searchTracks(query);
+        } else {
+            console.log("Modo de prueba local: Puente nativo ausente.");
+        }
+    }
+}
+
+function onSearchTracksResultEncoded(base64JsonString) {
+    var contenedor = document.getElementById('resultados');
+    try {
+        var jsonString = decodeBase64Utf8(base64JsonString);
+        var tracks = JSON.parse(jsonString);
+        contenedor.innerHTML = "";
+
+        if(tracks.length === 0) {
+            contenedor.innerHTML = "<p style='color:var(--text-muted); text-align:center; padding-top: 50px;'>No se encontraron rolas.</p>";
+            return;
         }
 
-        function formatTime(seconds) {
-            var min = Math.floor(seconds / 60);
-            var sec = Math.floor(seconds % 60);
-            return min + ":" + (sec < 10 ? "0" : "") + sec;
-        }
-
-        // --- 🗺️ NAVEGACIÓN Y VISTAS ---
-        function cambiarPestaña(vista) {
-            document.querySelectorAll('.app-view').forEach(v => v.classList.remove('active'));
-            document.querySelectorAll('.nav-item').forEach(t => t.classList.remove('active'));
-
-            document.getElementById(`view-${vista}`).classList.add('active');
-            document.getElementById(`tab-${vista}`).classList.add('active');
-        }
-
-        function abrirFullPlayer() { document.getElementById('fullPlayer').classList.add('open'); }
-        function cerrarFullPlayer() { document.getElementById('fullPlayer').classList.remove('open'); }
-        function abrirConfigPanel() { document.getElementById('configPanel').classList.add('open'); }
-        function cerrarConfigPanel() { document.getElementById('configPanel').classList.remove('open'); }
-        function cerrarArtistPanel() { document.getElementById('artistPanel').classList.remove('open'); }
-        
-        function filtrarCategoria(categoria) {
-            document.querySelectorAll('.chip').forEach(c => c.classList.remove('active'));
-            event.currentTarget.classList.add('active');
-        }
-
-        // --- 📡 MOTOR DE BÚSQUEDA ---
-        function dispararBusquedaReal() {
-            var query = document.getElementById('queryInput').value;
-            if(query.trim() !== "") {
-                document.getElementById('resultados').innerHTML = "<p style='color:var(--text-muted); text-align:center; padding-top: 50px;'>Buscando en el motor nativo... 📡</p>";
-                if (typeof SoundCoreBridge !== "undefined") {
-                    SoundCoreBridge.searchTracks(query);
-                } else {
-                    console.log("Modo de prueba local: Puente nativo ausente.");
-                }
-            }
-        }
-
-        function onSearchTracksResultEncoded(base64JsonString) {
-            var contenedor = document.getElementById('resultados');
-            try {
-                var jsonString = decodeBase64Utf8(base64JsonString);
-                var tracks = JSON.parse(jsonString);
-                contenedor.innerHTML = "";
-
-                if(tracks.length === 0) {
-                    contenedor.innerHTML = "<p style='color:var(--text-muted); text-align:center; padding-top: 50px;'>No se encontraron rolas.</p>";
-                    return;
-                }
-
-                tracks.forEach(function(track) {
-                    var div = document.createElement('div');
-                    div.className = 'track-item';
-                    div.style.cursor = 'pointer';
-                    
-                    div.onclick = function() { 
-                        lanzarReproduccionNativa(track.title, track.artist, track.thumbnail, track.id, track.artistBrowseId || ""); 
-                    };
-
-                    div.innerHTML = `
-                        <img src="${track.thumbnail}" alt="cover" onerror="this.src='https://placehold.co/50x50/111/fff?text=Music'">
-                        <div class="track-info">
-                            <div class="track-title">${track.title}</div>
-                            <div class="track-artist" style="color: var(--text-muted); font-size: 13px;">${track.artist}</div>
-                        </div>
-                        <i class="fa-solid fa-play" style="color:var(--text-muted); font-size:12px; margin-right:10px;"></i>
-                    `;
-                    contenedor.appendChild(div);
-                });
-            } catch (error) {
-                contenedor.innerHTML = `<p style='color:#ff5555; text-align:center; padding-top: 50px;'>Fallo al desempaquetar datos: ${error.message}</p>`;
-            }
-        }
-
-        // --- ⚡ CONTROLES Y REPRODUCCIÓN MULTIMEDIA ---
-        function reproducirSugerida(titulo, artista, foto, videoId) {
-            lanzarReproduccionNativa(titulo, artista, foto, videoId, "");
-        }
-
-        function togglePlaySimulado() {
-            if (typeof SoundCoreBridge !== "undefined") { SoundCoreBridge.togglePlayPause(); }
-        }
-
-        function saltarSiguiente() {
-            if (typeof SoundCoreBridge !== "undefined") { SoundCoreBridge.skipToNext(); }
-        }
-
-        function saltarAnterior() {
-            if (typeof SoundCoreBridge !== "undefined") { SoundCoreBridge.skipToPrevious(); }
-        }
-
-        function setPlaybackState(isPlaying) {
-            var btnMini = document.getElementById('pBtn');
-            var btnFull = document.getElementById('fpBtn');
-            if(isPlaying) {
-                btnMini.innerHTML = '<i class="fa-solid fa-pause"></i>';
-                btnFull.innerHTML = '<i class="fa-solid fa-pause"></i>';
-            } else {
-                btnMini.innerHTML = '<i class="fa-solid fa-play"></i>';
-                btnFull.innerHTML = '<i class="fa-solid fa-play"></i>';
-            }
-        }
-
-        function updatePlaybackProgress(current, duration) {
-            duracionCancionActual = duration; 
-            var porcentaje = (current / duration) * 100;
-            var progressBar = document.querySelector('.progress-current');
-            if (progressBar) progressBar.style.width = porcentaje + '%';
-            document.getElementById('timeCurrent').innerText = formatTime(current);
-            document.getElementById('timeTotal').innerText = formatTime(duration);
-        }
-
-        document.getElementById('realProgressBar')?.addEventListener('click', function(e) {
-            var rect = this.getBoundingClientRect();
-            var clickX = e.clientX - rect.left;
-            var width = rect.width;
-            var porcentaje = clickX / width;
-            if (duracionCancionActual > 0 && typeof SoundCoreBridge !== "undefined") {
-                var destinoSegundos = Math.floor(porcentaje * duracionCancionActual);
-                SoundCoreBridge.seekToPosition(destinoSegundos);
-            }
-        });
-
-        // --- 🏎️ FLUX DE INYECCIÓN Y SINCRONIZACIÓN BATERIAL ---
-        function lanzarReproduccionNativa(titulo, artista, foto, videoId, artistBrowseId) {
-            browseIdArtistaActual = artistBrowseId;
-
-            var fakePayload = btoa(unescape(encodeURIComponent(JSON.stringify({
-                title: titulo,
-                artist: artista,
-                thumbnail: foto,
-                artistBrowseId: artistBrowseId
-            }))));
+        // 🚀 MEJORA: Usamos un Fragment para renderizar todo de un solo golpe (más rápido)
+        var fragment = document.createDocumentFragment();
+        tracks.forEach(function(track) {
+            var div = document.createElement('div');
+            div.className = 'track-item';
+            div.style.cursor = 'pointer';
             
-            sincronizarPistaNativa(fakePayload);
-            setPlaybackState(true);
+            div.onclick = function() { 
+                lanzarReproduccionNativa(track.title, track.artist, track.thumbnail, track.id, track.artistBrowseId || ""); 
+            };
 
-            if (typeof SoundCoreBridge !== "undefined") {
-                SoundCoreBridge.playTrack(videoId);
-            }
+            div.innerHTML = `
+                <img src="${track.thumbnail}" alt="cover" onerror="this.src='https://placehold.co/50x50/111/fff?text=Music'">
+                <div class="track-info">
+                    <div class="track-title">${track.title}</div>
+                    <div class="track-artist" style="color: var(--text-muted); font-size: 13px;">${track.artist}</div>
+                </div>
+                <i class="fa-solid fa-play" style="color:var(--text-muted); font-size:12px; margin-right:10px;"></i>
+            `;
+            fragment.appendChild(div);
+        });
+        contenedor.appendChild(fragment);
+    } catch (error) {
+        contenedor.innerHTML = `<p style='color:#ff5555; text-align:center; padding-top: 50px;'>Fallo al desempaquetar datos: ${error.message}</p>`;
+    }
+}
+
+// --- ⚡ CONTROLES Y REPRODUCCIÓN MULTIMEDIA ---
+function reproducirSugerida(titulo, artista, foto, videoId) {
+    lanzarReproduccionNativa(titulo, artista, foto, videoId, "");
+}
+
+function togglePlaySimulado() {
+    if (typeof SoundCoreBridge !== "undefined") { SoundCoreBridge.togglePlayPause(); }
+}
+
+function saltarSiguiente() {
+    if (typeof SoundCoreBridge !== "undefined") { SoundCoreBridge.skipToNext(); }
+}
+
+function saltarAnterior() {
+    if (typeof SoundCoreBridge !== "undefined") { SoundCoreBridge.skipToPrevious(); }
+}
+
+function setPlaybackState(isPlaying) {
+    var btnMini = document.getElementById('pBtn');
+    var btnFull = document.getElementById('fpBtn');
+    if(isPlaying) {
+        if(btnMini) btnMini.innerHTML = '<i class="fa-solid fa-pause"></i>';
+        if(btnFull) btnFull.innerHTML = '<i class="fa-solid fa-pause"></i>';
+    } else {
+        if(btnMini) btnMini.innerHTML = '<i class="fa-solid fa-play"></i>';
+        if(btnFull) btnFull.innerHTML = '<i class="fa-solid fa-play"></i>';
+    }
+}
+
+function updatePlaybackProgress(current, duration) {
+    duracionCancionActual = duration; 
+    var porcentaje = (current / duration) * 100;
+    var progressBar = document.querySelector('.progress-current');
+    if (progressBar) progressBar.style.width = porcentaje + '%';
+    
+    var timeCurrent = document.getElementById('timeCurrent');
+    var timeTotal = document.getElementById('timeTotal');
+    if(timeCurrent) timeCurrent.innerText = formatTime(current);
+    if(timeTotal) timeTotal.innerText = formatTime(duration);
+}
+
+document.getElementById('realProgressBar')?.addEventListener('click', function(e) {
+    e.preventDefault(); // 🛡️ Evita comportamientos raros del scroll o foco en la barra
+    var rect = this.getBoundingClientRect();
+    var clickX = e.clientX - rect.left;
+    var width = rect.width;
+    var porcentaje = clickX / width;
+    if (duracionCancionActual > 0 && typeof SoundCoreBridge !== "undefined") {
+        var destinoSegundos = Math.floor(porcentaje * duracionCancionActual);
+        SoundCoreBridge.seekToPosition(destinoSegundos);
+    }
+});
+
+// --- 🏎️ FLUX DE INYECCIÓN Y SINCRONIZACIÓN BATERIAL ---
+function lanzarReproduccionNativa(titulo, artista, foto, videoId, artistBrowseId) {
+    browseIdArtistaActual = artistBrowseId;
+
+    var fakePayload = btoa(unescape(encodeURIComponent(JSON.stringify({
+        title: titulo,
+        artist: artista,
+        thumbnail: foto,
+        artistBrowseId: artistBrowseId
+    }))));
+    
+    sincronizarPistaNativa(fakePayload);
+    setPlaybackState(true);
+
+    if (typeof SoundCoreBridge !== "undefined") {
+        SoundCoreBridge.playTrack(videoId);
+    }
+}
+
+function sincronizarPistaNativa(base64Payload) {
+    try {
+        var track = JSON.parse(decodeBase64Utf8(base64Payload));
+        
+        document.getElementById('pTitle').innerText = track.title;
+        document.getElementById('pArtist').innerText = track.artist;
+        if(track.thumbnail && track.thumbnail.trim() !== "") {
+            document.getElementById('pThumb').src = track.thumbnail;
         }
+        
+        var playerBar = document.getElementById('playerBar');
+        playerBar.style.display = "flex";
+        playerBar.onclick = function(e) {
+            if (e.target.closest('.play-btn') || e.target.closest('.control-btn')) return;
+            abrirFullPlayer();
+        };
 
-        function sincronizarPistaNativa(base64Payload) {
-            try {
-                var track = JSON.parse(decodeBase64Utf8(base64Payload));
+        document.getElementById('fpTitle').innerText = track.title;
+        if(track.thumbnail && track.thumbnail.trim() !== "") {
+            document.getElementById('fpThumb').src = track.thumbnail;
+        }
+        
+        var fpArtistContainer = document.getElementById('fpArtist');
+        fpArtistContainer.innerHTML = "";
+        var idsArray = track.artistBrowseId ? track.artistBrowseId.split(",") : [];
+
+        if (track.artist.includes(",")) {
+            var artistasArray = track.artist.split(",");
+            artistasArray.forEach(function(art, index) {
+                var nombreLimpio = art.trim();
+                var bid = idsArray[index] ? idsArray[index].trim() : "";
                 
-                document.getElementById('pTitle').innerText = track.title;
-                document.getElementById('pArtist').innerText = track.artist;
-                if(track.thumbnail && track.thumbnail.trim() !== "") {
-                    document.getElementById('pThumb').src = track.thumbnail;
-                }
-                document.getElementById('playerBar').style.display = "flex";
+                var span = document.createElement('span');
+                span.className = 'fp-individual-artist';
+                span.innerText = nombreLimpio;
                 
-                document.getElementById('playerBar').onclick = function(e) {
-                    if (e.target.closest('.play-btn')) return;
-                    abrirFullPlayer();
+                span.onclick = function(e) {
+                    e.stopPropagation();
+                    cerrarFullPlayer();
+                    if (bid !== "") {
+                        abrirArtistPanelReal(bid, nombreLimpio);
+                    } else {
+                        abrirArtistPanel(nombreLimpio);
+                    }
                 };
 
-                document.getElementById('fpTitle').innerText = track.title;
-                if(track.thumbnail && track.thumbnail.trim() !== "") {
-                    document.getElementById('fpThumb').src = track.thumbnail;
+                fpArtistContainer.appendChild(span);
+                if (index < artistasArray.length - 1) {
+                    fpArtistContainer.appendChild(document.createTextNode(", "));
                 }
-                
-                var fpArtistContainer = document.getElementById('fpArtist');
-                fpArtistContainer.innerHTML = "";
-                var idsArray = track.artistBrowseId ? track.artistBrowseId.split(",") : [];
-
-                if (track.artist.includes(",")) {
-                    var artistasArray = track.artist.split(",");
-                    artistasArray.forEach(function(art, index) {
-                        var nombreLimpio = art.trim();
-                        var bid = idsArray[index] ? idsArray[index].trim() : "";
-                        
-                        var span = document.createElement('span');
-                        span.className = 'fp-individual-artist';
-                        span.innerText = nombreLimpio;
-                        
-                        span.onclick = function(e) {
-                            e.stopPropagation();
-                            cerrarFullPlayer();
-                            if (bid !== "") {
-                                abrirArtistPanelReal(bid, nombreLimpio);
-                            } else {
-                                abrirArtistPanel(nombreLimpio);
-                            }
-                        };
-
-                        fpArtistContainer.appendChild(span);
-                        if (index < artistasArray.length - 1) {
-                            fpArtistContainer.appendChild(document.createTextNode(", "));
-                        }
-                    });
+            });
+        } else {
+            var span = document.createElement('span');
+            span.className = 'fp-individual-artist';
+            span.innerText = track.artist;
+            span.onclick = function(e) {
+                e.stopPropagation();
+                cerrarFullPlayer();
+                var primerId = idsArray[0] ? idsArray[0].trim() : "";
+                if (primerId !== "") {
+                    abrirArtistPanelReal(primerId, track.artist);
                 } else {
-                    var span = document.createElement('span');
-                    span.className = 'fp-individual-artist';
-                    span.innerText = track.artist;
-                    span.onclick = function(e) {
-                        e.stopPropagation();
-                        cerrarFullPlayer();
-                        var primerId = idsArray[0] ? idsArray[0].trim() : "";
-                        if (primerId !== "") {
-                            abrirArtistPanelReal(primerId, track.artist);
-                        } else {
-                            abrirArtistPanel(track.artist);
-                        }
-                    };
-                    fpArtistContainer.appendChild(span);
+                    abrirArtistPanel(track.artist);
                 }
-            } catch(e) {
-                console.error("Error en el acople multimedia de SoundCore: " + e.message);
-            }
+            };
+            fpArtistContainer.appendChild(span);
         }
+    } catch(e) {
+        console.error("Error en el acople multimedia de SoundCore: " + e.message);
+    }
+}
 
-   // --- 🎤 SECCIÓN DE ARTISTAS (HISTORIAL NATIVO / CACHÉ) ---
+// --- 🎤 SECCIÓN DE ARTISTAS ---
 const infoArtistas = {
     "Kanye West": { banner: "https://images.unsplash.com/photo-1611339555312-e607c8352fd7?q=80&w=600", listeners: "74,103,449" },
     "Bad Bunny": { banner: "https://images.unsplash.com/photo-1571330735066-03add575afe8?q=80&w=600", listeners: "69,541,200" },
@@ -558,7 +569,6 @@ function onArtistDetailsResultEncoded(base64Json) {
     try {
         var data = JSON.parse(decodeBase64Utf8(base64Json));
         
-        // 🔥 SOLUCIÓN AL PARPADEO: Validamos que no vengan vacíos antes de pintar
         if (data.name && data.name.trim() !== "") {
             document.getElementById('apName').innerText = data.name;
         }
@@ -572,6 +582,8 @@ function onArtistDetailsResultEncoded(base64Json) {
         var container = document.getElementById('artistTracksContainer');
         container.innerHTML = "";
         
+        var fragment = document.createDocumentFragment();
+
         // 1. RENDERIZAR CANCIONES POPULARES
         if(data.tracks && data.tracks.length > 0) {
             data.tracks.forEach(function(track) {
@@ -589,19 +601,22 @@ function onArtistDetailsResultEncoded(base64Json) {
                     </div>
                     <i class="fa-solid fa-play" style="color:var(--text-muted); font-size:11px; margin-right:10px;"></i>
                 `;
-                container.appendChild(div);
+                fragment.appendChild(div);
             });
         } else {
-            container.innerHTML = "<p style='color:var(--text-muted); padding:16px; font-size:13px;'>No se encontraron lanzamientos disponibles.</p>";
+            var p = document.createElement('p');
+            p.style.cssText = "color:var(--text-muted); padding:16px; font-size:13px;";
+            p.innerText = "No se encontraron lanzamientos disponibles.";
+            fragment.appendChild(p);
         }
 
-        // 2. RENDERIZAR ÁLBUMES Y SENCILLOS (MAQUEADO NATIVO)
+        // 2. RENDERIZAR ÁLBUMES Y SENCILLOS
         if(data.albums && data.albums.length > 0) {
             var tituloAlbumes = document.createElement('div');
             tituloAlbumes.className = 'section-title';
             tituloAlbumes.style.cssText = 'padding: 0 16px; margin-top: 25px; margin-bottom: 12px;';
             tituloAlbumes.innerText = 'Álbumes y Sencillos';
-            container.appendChild(tituloAlbumes);
+            fragment.appendChild(tituloAlbumes);
 
             var gridAlbumes = document.createElement('div');
             gridAlbumes.className = 'suggested-grid';
@@ -621,8 +636,10 @@ function onArtistDetailsResultEncoded(base64Json) {
                 `;
                 gridAlbumes.appendChild(card);
             });
-            container.appendChild(gridAlbumes);
+            fragment.appendChild(gridAlbumes);
         }
+
+        container.appendChild(fragment);
 
     } catch(e) {
         onArtistDetailsError(e.message);
@@ -640,29 +657,29 @@ function onArtistDetailsError(msg) {
         </div>`;
 }
 
-        // --- 💾 SIMULACIÓN DE BIBLIOTECA ---
-        function crearPlaylistSimulada() {
-            let nombre = prompt("Nombre de tu nueva Playlist:", "Mix Perrón " + (++contadorPlaylists));
-            if (!nombre || nombre.trim() === "") return;
+// --- 💾 SIMULACIÓN DE BIBLIOTECA ---
+function crearPlaylistSimulada() {
+    let nombre = prompt("Nombre de tu nueva Playlist:", "Mix Perrón " + (++contadorPlaylists));
+    if (!nombre || nombre.trim() === "") return;
 
-            const emptyState = document.getElementById('empty-library-state');
-            if (emptyState) emptyState.style.display = 'none';
+    const emptyState = document.getElementById('empty-library-state');
+    if (emptyState) emptyState.style.display = 'none';
 
-            const container = document.getElementById('playlist-container');
-            const div = document.createElement('div');
-            div.className = 'track-item';
-            div.innerHTML = `
-                <div class="menu-icon-wrapper" style="background: #141414; border-radius: 10px; width: 52px; height: 52px; display:flex; align-items:center; justify-content:center; border: 1px solid var(--border-color);">
-                    <i class="fa-solid fa-music" style="color: #8e8e93;"></i>
-                </div>
-                <div class="track-info">
-                    <div class="track-title">${nombre}</div>
-                    <div class="track-artist">Creada por ti • 0 canciones</div>
-                </div>
-                <i class="fa-solid fa-chevron-right" style="color: #2c2c2e; font-size: 12px; margin-right: 5px;"></i>
-            `;
-            container.appendChild(div);
-        }
+    const container = document.getElementById('playlist-container');
+    const div = document.createElement('div');
+    div.className = 'track-item';
+    div.innerHTML = `
+        <div class="menu-icon-wrapper" style="background: #141414; border-radius: 10px; width: 52px; height: 52px; display:flex; align-items:center; justify-content:center; border: 1px solid var(--border-color);">
+            <i class="fa-solid fa-music" style="color: #8e8e93;"></i>
+        </div>
+        <div class="track-info">
+            <div class="track-title">${nombre}</div>
+            <div class="track-artist">Creada por ti • 0 canciones</div>
+        </div>
+        <i class="fa-solid fa-chevron-right" style="color: #2c2c2e; font-size: 12px; margin-right: 5px;"></i>
+    `;
+    container.appendChild(div);
+}
 </script>
 </body>
 </html>

@@ -188,7 +188,7 @@ class SoundCoreActivity : ComponentActivity() {
                     }
                 }.onFailure { error ->
                     runOnUiThread {
-                        Toast.makeText(this@SoundCoreActivity, "Fallo en el radar nativo: ${error.message}", Toast.LENGTH_SHORT).show()
+                        Toast.makeText(this@SoundCoreActivity, "Fallo en el radar: ${error.message}", Toast.LENGTH_SHORT).show()
                     }
                 }
             }
@@ -196,26 +196,25 @@ class SoundCoreActivity : ComponentActivity() {
 
         @JavascriptInterface
         fun loadArtistDetails(browseId: String) {
-            val cleanId = browseId.trim()
-            if (cleanId.isEmpty()) return
+            val rawId = browseId.trim()
+            if (rawId.isEmpty()) return
             
-            // 🔥 ARREGLO AL ERROR 400: Agregamos el prefijo si viene crudo desde el reproductor/búsqueda
-            val formattedBrowseId = if (cleanId.startsWith("UC") && !cleanId.startsWith("FEartists_")) {
-                "FEartists_$cleanId"
+            // 🛡️ LIMPIEZA ABSOLUTA: Si vienen múltiples IDs enlazados por comas, nos quedamos solo con el primero
+            val cleanArtistId = if (rawId.contains(",")) {
+                rawId.split(",").firstOrNull { it.trim().isNotEmpty() }?.trim() ?: rawId
             } else {
-                cleanId
+                rawId
             }
 
             activityScope.launch(Dispatchers.IO) {
-                YouTube.artist(formattedBrowseId).onSuccess { artistPage ->
+                // Se invoca el método nativo directamente con el ID limpio como hace Arturo
+                YouTube.artist(cleanArtistId).onSuccess { artistPage ->
                     val nombreReal = artistPage.artist.title.replace("\"", "\\\"")
                     val fotoReal = artistPage.artist.thumbnail ?: ""
                     
-                    // Extraemos las canciones populares y los álbumes disponibles de las secciones de InnerTube
                     val songItems = artistPage.sections.flatMap { it.items }.filterIsInstance<SongItem>()
                     val albumItems = artistPage.sections.flatMap { it.items }.filterIsInstance<AlbumItem>()
                     
-                    // 1. Convertir canciones populares a JSON
                     val tracksJsonBuilder = StringBuilder("[")
                     songItems.forEachIndexed { index, song ->
                         val tTitle = song.title.replace("\"", "\\\"")
@@ -232,7 +231,6 @@ class SoundCoreActivity : ComponentActivity() {
                     }
                     tracksJsonBuilder.append("]")
 
-                    // 2. Convertir álbumes a JSON (Para que tu código JS los pueda renderizar abajo si existen)
                     val albumsJsonBuilder = StringBuilder("[")
                     albumItems.forEachIndexed { index, album ->
                         val aTitle = album.title.replace("\"", "\\\"")
@@ -245,7 +243,6 @@ class SoundCoreActivity : ComponentActivity() {
                     }
                     albumsJsonBuilder.append("]")
 
-                    // Unimos todo respetando la estructura limpia que tenías antes
                     val finalJson = "{\"name\":\"$nombreReal\",\"thumbnail\":\"$fotoReal\",\"tracks\":$tracksJsonBuilder,\"albums\":$albumsJsonBuilder}"
                     val base64Json = Base64.encodeToString(finalJson.toByteArray(Charsets.UTF_8), Base64.NO_WRAP)
                     
@@ -254,8 +251,7 @@ class SoundCoreActivity : ComponentActivity() {
                     }
                 }.onFailure { error ->
                     runOnUiThread {
-                        // Enviamos el fallo con gracia a la UI para que se pinte dentro de la app sin tumbarla
-                        val errorMsg = error.message ?: "Error de comunicación"
+                        val errorMsg = error.message ?: "Error de red"
                         val safeError = errorMsg.replace("\"", "\\\"").replace("'", "\\'")
                         webView.loadUrl("javascript:onArtistDetailsError('$safeError')")
                     }
