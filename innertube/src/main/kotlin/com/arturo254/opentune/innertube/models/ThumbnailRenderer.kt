@@ -1,37 +1,31 @@
-/*
- * OpenTune Project Original (2026)
- * Arturo254 (github.com/Arturo254)
- * Licensed Under GPL-3.0 | see git history for contributors
- */
-
-
-
 package com.arturo254.opentune.innertube.models
 
-import kotlinx.serialization.ExperimentalSerializationApi
 import kotlinx.serialization.Serializable
-import kotlinx.serialization.json.JsonNames
 
-@OptIn(ExperimentalSerializationApi::class)
 @Serializable
 data class ThumbnailRenderer(
-    @JsonNames("croppedSquareThumbnailRenderer")
     val musicThumbnailRenderer: MusicThumbnailRenderer?,
-    val musicAnimatedThumbnailRenderer: MusicAnimatedThumbnailRenderer?,
-    val croppedSquareThumbnailRenderer: MusicThumbnailRenderer?,
 ) {
     @Serializable
     data class MusicThumbnailRenderer(
         val thumbnail: Thumbnails,
-        val thumbnailCrop: String?,
-        val thumbnailScale: String?,
+        val thumbnailCrop: String? = null,
+        val thumbnailScale: String? = null,
+        val trackingParams: String,
     ) {
-        fun getThumbnailUrl() = thumbnail.thumbnails.lastOrNull()?.url
+        fun getThumbnailUrl(): String? {
+            val urlOriginal = thumbnail.thumbnails.lastOrNull()?.url ?: return null
+            
+            // 🔥 PARCHE GLOBAL SOUNDCORE: Destruye cualquier restricción de tamaño de YouTube Music
+            return when {
+                urlOriginal.contains("=w") || urlOriginal.contains("-h") -> {
+                    urlOriginal.replace(Regex("=w\\d+-h\\d+.*"), "=w512-h512-c")
+                }
+                urlOriginal.contains("=s") || urlOriginal.contains("-c") -> {
+                    urlOriginal.replace(Regex("=s\\d+.*"), "=s960")
+                }
+                else -> urlOriginal
+            }
+        }
     }
-
-    @Serializable
-    data class MusicAnimatedThumbnailRenderer(
-        val animatedThumbnail: Thumbnails,
-        val backupRenderer: MusicThumbnailRenderer,
-    )
 }

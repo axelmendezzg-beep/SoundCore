@@ -166,10 +166,7 @@ class SoundCoreActivity : ComponentActivity() {
                     songs.forEachIndexed { index, song ->
                         val title = song.title.replace("\"", "\\\"")
                         val artist = song.artists.joinToString { it.name }.replace("\"", "\\\"")
-                        
-                        // Sincronización de múltiples colaboradores por comas
                         val allArtistIds = song.artists.map { it.id ?: "" }.joinToString(",")
-                        
                         val id = song.id
                         val thumbnail = song.thumbnail ?: ""
 
@@ -196,12 +193,16 @@ class SoundCoreActivity : ComponentActivity() {
             }
         }
 
-        // --- 🎤 MÉTODO NATIVO: CARGAR PERFIL DE ARTISTA DESDE YT (BLINDADO) ---
+        // --- 🎤 MÉTODO NATIVO CORREGIDO MEDIANTE ESTRUCTURA INTERNA DE ARCHIVETUNE ---
         @JavascriptInterface
         fun loadArtistDetails(browseId: String) {
             if (browseId.isEmpty()) return
             activityScope.launch(Dispatchers.IO) {
                 YouTube.artist(browseId).onSuccess { artistPage ->
+                    // Extracción mapeada limpia usando el sub-objeto 'artist' (ArtistItem)
+                    val nombreReal = artistPage.artist.title.replace("\"", "\\\"")
+                    val fotoReal = artistPage.artist.thumbnail ?: ""
+                    
                     val tracksJsonBuilder = StringBuilder("[")
                     val songItems = artistPage.sections.flatMap { it.items }.filterIsInstance<SongItem>()
                     
@@ -218,8 +219,7 @@ class SoundCoreActivity : ComponentActivity() {
                     }
                     tracksJsonBuilder.append("]")
 
-                    // Se envía limpio sin referencias conflictivas al objeto superior del modelo
-                    val finalJson = "{\"name\":\"\",\"thumbnail\":\"\",\"tracks\":$tracksJsonBuilder}"
+                    val finalJson = "{\"name\":\"$nombreReal\",\"thumbnail\":\"$fotoReal\",\"tracks\":$tracksJsonBuilder}"
                     val base64Json = Base64.encodeToString(finalJson.toByteArray(Charsets.UTF_8), Base64.NO_WRAP)
                     
                     runOnUiThread {
