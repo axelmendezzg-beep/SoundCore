@@ -545,7 +545,7 @@ function onTrackChangedFromNative(base64Payload) {
     }
 }
 
-        // --- 🎤 SECCIÓN DE ARTISTAS ---
+          // --- 🎤 SECCIÓN DE ARTISTAS ---
         const infoArtistas = {
             "Kanye West": { banner: "https://images.unsplash.com/photo-1611339555312-e607c8352fd7?q=80&w=600", listeners: "74,103,449" },
             "Bad Bunny": { banner: "https://images.unsplash.com/photo-1571330735066-03add575afe8?q=80&w=600", listeners: "69,541,200" },
@@ -609,8 +609,13 @@ function onTrackChangedFromNative(base64Payload) {
                         var div = document.createElement('div');
                         div.className = 'track-item';
                         div.style.cursor = 'pointer';
+                        
+                        // 🛠️ BLINDAJE DE CLICS: Si la canción popular no trae un ID de artista propio, 
+                        // le heredamos el del artista actual del panel para no mandar IDs de video corruptos.
+                        var trackArtistId = track.artistBrowseId || data.id || document.getElementById('apName').innerText;
+
                         div.onclick = function() { 
-                            lanzarReproduccionNativa(track.title, track.artist, track.thumbnail, track.id, track.artistBrowseId || ""); 
+                            lanzarReproduccionNativa(track.title, track.artist, track.thumbnail, track.id, trackArtistId); 
                         };
                         div.innerHTML = `
                             <img src="${track.thumbnail}" style="width:44px; height:44px; border-radius:6px; margin-right:12px; object-fit:cover;" onerror="this.src='https://placehold.co/50x50/111/fff?text=Music'">
@@ -674,7 +679,6 @@ function onTrackChangedFromNative(base64Payload) {
                     <p style='color:#ff5555; font-size:11px; margin-top:4px;'>Detalle: ${msg}</p>
                 </div>`;
         }
-
         // --- 💾 SIMULACIÓN DE BIBLIOTECA ---
         function crearPlaylistSimulada() {
             let nombre = prompt("Nombre de tu nueva Playlist:", "Mix Perrón " + (++contadorPlaylists));

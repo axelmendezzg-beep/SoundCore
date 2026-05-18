@@ -88,11 +88,9 @@ class SoundCoreActivity : ComponentActivity() {
 
     private fun startPlaybackTrackers() {
         progressJob?.cancel()
-        // Aseguramos explícitamente que corra en el Main Thread
         progressJob = activityScope.launch(Dispatchers.Main) {
             while (isActive) {
                 playerConnection?.player?.let { p ->
-                    // Protegemos las lecturas del reproductor en el hilo principal
                     if (p.isPlaying) {
                         val current = p.currentPosition / 1000
                         val duration = p.duration / 1000
@@ -112,7 +110,9 @@ class SoundCoreActivity : ComponentActivity() {
                             val artist = metadata.artist?.toString()?.replace("\"", "\\\"") ?: "Artista Desconocido"
                             val thumbnail = metadata.artworkUri?.toString() ?: ""
                             
-                            val artistBrowseId = mediaId ?: artist
+                            // 🛠️ BLINDAJE AQUÍ: Pasamos el string del artista como browseId por defecto de la rola nativa,
+                            // evitando meter el ID de video corrupto de YouTube (como JseJETvMtHY) en el flujo de vistas.
+                            val artistBrowseId = artist
 
                             val json = """
                                 {
@@ -225,13 +225,11 @@ class SoundCoreActivity : ComponentActivity() {
             }
         }
 
-             @JavascriptInterface
+        @JavascriptInterface
         fun loadArtistDetails(browseId: String) {
             val rawId = browseId.trim()
             if (rawId.isEmpty()) return
             
-            // Si el HTML nos mandó una lista de IDs separados por comas, limpiamos para quedarnos con el primero.
-            // Si es un nombre plano de un artista secundario, pasará limpio sin entrar a este split.
             val cleanArtistId = if (rawId.contains(",") && (rawId.startsWith("UC") || rawId.startsWith("FM"))) {
                 rawId.split(",").firstOrNull { it.trim().isNotEmpty() }?.trim() ?: rawId
             } else {
@@ -239,7 +237,6 @@ class SoundCoreActivity : ComponentActivity() {
             }
 
             activityScope.launch(Dispatchers.IO) {
-                // Si no es un ID de canal de YouTube legítimo, buscamos por su nombre directamente
                 if (!cleanArtistId.startsWith("UC") && !cleanArtistId.startsWith("FM")) {
                     executeFallbackSearch(cleanArtistId)
                     return@launch
@@ -270,8 +267,6 @@ class SoundCoreActivity : ComponentActivity() {
         }
 
         private suspend fun executeFallbackSearch(corruptId: String) {
-            // PRIORIDAD AL TEXTO SELECCIONADO: Si corruptId ya trae el nombre del artista secundario, usamos ese.
-            // Solo si viene vacío, le pedimos auxilio al reproductor global.
             val queryTarget = if (corruptId.trim().isNotEmpty()) {
                 corruptId
             } else {
