@@ -13,6 +13,8 @@ import android.webkit.WebView
 import android.webkit.WebViewClient
 import android.widget.Toast
 import androidx.activity.ComponentActivity
+import androidx.media3.common.MediaItem
+import androidx.media3.common.Player
 import com.arturo254.opentune.playback.MusicService
 import com.arturo254.opentune.playback.MusicService.MusicBinder
 import com.arturo254.opentune.playback.PlayerConnection
@@ -38,6 +40,25 @@ class SoundCoreActivity : ComponentActivity() {
     private val activityScope = CoroutineScope(Dispatchers.Main + Job())
     private var progressJob: Job? = null
 
+    // Listener nativo de Media3 para detectar cambios de metadatos en tiempo real
+    private val mediaListener = object : Player.Listener {
+        override fun onMediaItemTransition(mediaItem: MediaItem?, reason: Int) {
+            mediaItem?.let { item ->
+                val title = item.mediaMetadata.title?.toString()?.replace("\"", "\\\"") ?: "Desconocido"
+                val artist = item.mediaMetadata.artist?.toString()?.replace("\"", "\\\"") ?: "Artista Desconocido"
+                val thumbnail = item.mediaMetadata.artworkUri?.toString() ?: ""
+                val artistBrowseId = item.mediaId ?: ""
+
+                val jsonPayload = "{\"title\":\"$title\",\"artist\":\"$artist\",\"thumbnail\":\"$thumbnail\",\"artistBrowseId\":\"$artistBrowseId\"}"
+                val base64Payload = Base64.encodeToString(jsonPayload.toByteArray(Charsets.UTF_8), Base64.NO_WRAP)
+                
+                runOnUiThread {
+                    webView.loadUrl("javascript:sincronizarPistaNativa('$base64Payload')")
+                }
+            }
+        }
+    }
+
     private val serviceConnection = object : ServiceConnection {
         override fun onServiceConnected(name: ComponentName?, service: IBinder?) {
             isMusicServiceBound = true
@@ -49,32 +70,19 @@ class SoundCoreActivity : ComponentActivity() {
                     Toast.makeText(this@SoundCoreActivity, "¡Sistemas nativos acoplados! 🏎️", Toast.LENGTH_SHORT).show()
                 }
 
-                // 📡 Escuchar si se pausa o se reproduce
+                // Sincronizar el estado de play/pause
                 activityScope.launch {
                     conn.isPlaying.collectLatest { playing ->
                         webView.loadUrl("javascript:setPlaybackState($playing)")
                     }
                 }
 
-                // ⚡ NUEVO: Interceptor de pistas en tiempo real (Soluciona el congelamiento del reproductor)
-                activityScope.launch {
-                    conn.currentMediaItem.collectLatest { mediaItem ->
-                        if (mediaItem != null) {
-                            val title = mediaItem.mediaMetadata.title?.toString()?.replace("\"", "\\\"") ?: "Desconocido"
-                            val artist = mediaItem.mediaMetadata.artist?.toString()?.replace("\"", "\\\"") ?: "Artista Desconocido"
-                            val thumbnail = mediaItem.mediaMetadata.artworkUri?.toString() ?: ""
-                            
-                            // Intentar recuperar los IDs de los artistas si están guardados en los extras
-                            val artistBrowseId = mediaItem.mediaId ?: ""
-
-                            val jsonPayload = "{\"title\":\"$title\",\"artist\":\"$artist\",\"thumbnail\":\"$thumbnail\",\"artistBrowseId\":\"$artistBrowseId\"}"
-                            val base64Payload = Base64.encodeToString(jsonPayload.toByteArray(Charsets.UTF_8), Base64.NO_WRAP)
-                            
-                            runOnUiThread {
-                                webView.loadUrl("javascript:sincronizarPistaNativa('$base64Payload')")
-                            }
-                        }
-                    }
+                // 🔥 Vinculamos el Listener al reproductor para capturar transiciones de canciones automáticas
+                conn.player?.addListener(mediaListener)
+                
+                // Forzar sincronización de la primera canción si ya hay algo reproduciéndose
+                conn.player?.currentMediaItem?.let {
+                    mediaListener.onMediaItemTransition(it, Player.MEDIA_ITEM_TRANSITION_REASON_PLAYLIST_CHANGED)
                 }
 
                 startProgressTracker()
@@ -83,6 +91,7 @@ class SoundCoreActivity : ComponentActivity() {
         override fun onServiceDisconnected(name: ComponentName?) {
             isMusicServiceBound = false
             progressJob?.cancel()
+            playerConnection?.player?.removeListener(mediaListener)
             playerConnection?.dispose()
             playerConnection = null
         }
@@ -125,6 +134,7 @@ class SoundCoreActivity : ComponentActivity() {
 
     override fun onDestroy() {
         if (isMusicServiceBound) {
+            playerConnection?.player?.removeListener(mediaListener)
             unbindService(serviceConnection)
             isMusicServiceBound = false
         }
