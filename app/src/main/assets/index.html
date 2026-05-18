@@ -458,7 +458,7 @@
             }
         }
 
-        function sincronizarPistaNativa(base64Payload) {
+                function sincronizarPistaNativa(base64Payload) {
             try {
                 var track = JSON.parse(decodeBase64Utf8(base64Payload));
                 
@@ -488,7 +488,8 @@
                     var artistasArray = track.artist.split(",");
                     artistasArray.forEach(function(art, index) {
                         var nombreLimpio = art.trim();
-                        var bid = idsArray[index] ? idsArray[index].trim() : "";
+                        // Si no existe un ID para este artista secundario, le inyectamos su propio nombre como ID temporal
+                        var bid = idsArray[index] ? idsArray[index].trim() : nombreLimpio;
                         
                         var span = document.createElement('span');
                         span.className = 'fp-individual-artist';
@@ -497,7 +498,11 @@
                         span.onclick = function(e) {
                             e.stopPropagation();
                             cerrarFullPlayer();
-                            if (bid !== "") {
+                            
+                            // Si es un nombre plano, forzamos búsqueda limpia por texto nativo
+                            if (bid !== "" && !bid.startsWith("UC") && !bid.startsWith("FM")) {
+                                abrirArtistPanelReal(nombreLimpio, nombreLimpio);
+                            } else if (bid !== "") {
                                 abrirArtistPanelReal(bid, nombreLimpio);
                             } else {
                                 abrirArtistPanel(nombreLimpio);
@@ -516,7 +521,7 @@
                     span.onclick = function(e) {
                         e.stopPropagation();
                         cerrarFullPlayer();
-                        var primerId = idsArray[0] ? idsArray[0].trim() : "";
+                        var primerId = idsArray[0] ? idsArray[0].trim() : track.artist;
                         if (primerId !== "") {
                             abrirArtistPanelReal(primerId, track.artist);
                         } else {
@@ -529,6 +534,7 @@
                 console.error("Error en el acople multimedia de SoundCore: " + e.message);
             }
         }
+
 // --- 🔄 RECEPTOR EXCLUSIVO PARA CAMBIOS DE PISTA NATIVOS ---
 function onTrackChangedFromNative(base64Payload) {
     try {
