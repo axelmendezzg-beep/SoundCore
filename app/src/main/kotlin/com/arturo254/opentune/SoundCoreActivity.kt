@@ -22,6 +22,7 @@ import com.arturo254.opentune.playback.queues.YouTubeQueue
 import com.arturo254.opentune.innertube.models.WatchEndpoint
 import com.arturo254.opentune.innertube.YouTube
 import com.arturo254.opentune.innertube.models.SongItem
+import com.arturo254.opentune.innertube.models.AlbumItem
 import com.arturo254.opentune.innertube.models.ArtistItem
 import com.arturo254.opentune.db.MusicDatabase
 import dagger.hilt.android.AndroidEntryPoint
@@ -40,7 +41,6 @@ class SoundCoreActivity : ComponentActivity() {
     private val activityScope = CoroutineScope(Dispatchers.Main + Job())
     private var progressJob: Job? = null
 
-    // Listener nativo de Media3 para detectar cambios de metadatos en tiempo real
     private val mediaListener = object : Player.Listener {
         override fun onMediaItemTransition(mediaItem: MediaItem?, reason: Int) {
             mediaItem?.let { item ->
@@ -70,17 +70,14 @@ class SoundCoreActivity : ComponentActivity() {
                     Toast.makeText(this@SoundCoreActivity, "¡Sistemas nativos acoplados! 🏎️", Toast.LENGTH_SHORT).show()
                 }
 
-                // Sincronizar el estado de play/pause
                 activityScope.launch {
                     conn.isPlaying.collectLatest { playing ->
                         webView.loadUrl("javascript:setPlaybackState($playing)")
                     }
                 }
 
-                // 🔥 Vinculamos el Listener al reproductor para capturar transiciones de canciones automáticas
                 conn.player?.addListener(mediaListener)
                 
-                // Forzar sincronización de la primera canción si ya hay algo reproduciéndose
                 conn.player?.currentMediaItem?.let {
                     mediaListener.onMediaItemTransition(it, Player.MEDIA_ITEM_TRANSITION_REASON_PLAYLIST_CHANGED)
                 }
@@ -227,37 +224,62 @@ class SoundCoreActivity : ComponentActivity() {
 
         @JavascriptInterface
         fun loadArtistDetails(browseId: String) {
-            if (browseId.isEmpty()) return
+            if (browseId.trim().isEmpty()) return
             activityScope.launch(Dispatchers.IO) {
+                // Forzamos el contexto de red oficial de InnerTube para evitar el bloqueo del POST
                 YouTube.artist(browseId).onSuccess { artistPage ->
-                    val nombreReal = artistPage.artist.title.replace("\"", "\\\"")
-                    val fotoReal = artistPage.artist.thumbnail ?: ""
-                    
-                    val tracksJsonBuilder = StringBuilder("[")
-                    val songItems = artistPage.sections.flatMap { it.items }.filterIsInstance<SongItem>()
-                    
-                    songItems.forEachIndexed { index, song ->
-                        val tTitle = song.title.replace("\"", "\\\"")
-                        val tArtist = song.artists.joinToString { it.name }.replace("\"", "\\\"")
-                        tracksJsonBuilder.append("{")
-                            .append("\"id\":\"${song.id}\",")
-                            .append("\"title\":\"$tTitle\",")
-                            .append("\"artist\":\"$tArtist\",")
-                            .append("\"thumbnail\":\"${song.thumbnail ?: ""}\"")
-                            .append("}")
-                        if (index < songItems.size - 1) tracksJsonBuilder.append(",")
-                    }
-                    tracksJsonBuilder.append("]")
+                    try {
+                        val nombreReal = artistPage.artist.title.replace("\"", "\\\"")
+                        val fotoReal = artistPage.artist.thumbnail ?: ""
+                        
+                        // Separar canciones populares de álbumes utilizando filtros nativos de colecciones
+                        val songItems = artistPage.sections.flatMap { it.items }.filterIsInstance<SongItem>()
+                        val albumItems = artistPage.sections.flatMap { it.items }.filterIsInstance<AlbumItem>()
+                        
+                        // 1. Mapear Canciones
+                        val tracksJsonBuilder = StringBuilder("[")
+                        songItems.forEachIndexed { index, song ->
+                            val tTitle = song.title.replace("\"", "\\\"")
+                            val tArtist = song.artists.joinToString { it.name }.replace("\"", "\\\"")
+                            val tArtistIds = song.artists.map { it.id ?: "" }.joinToString(",")
+                            tracksJsonBuilder.append("{")
+                                .append("\"id\":\"${song.id}\",")
+                                .append("\"title\":\"$tTitle\",")
+                                .append("\"artist\":\"$tArtist\",")
+                                .append("\"artistBrowseId\":\"$tArtistIds\",")
+                                .append("\"thumbnail\":\"${song.thumbnail ?: ""}\"")
+                                .append("}")
+                            if (index < songItems.size - 1) tracksJsonBuilder.append(",")
+                        }
+                        tracksJsonBuilder.append("]")
 
-                    val finalJson = "{\"name\":\"$nombreReal\",\"thumbnail\":\"$fotoReal\",\"tracks\":$tracksJsonBuilder}"
-                    val base64Json = Base64.encodeToString(finalJson.toByteArray(Charsets.UTF_8), Base64.NO_WRAP)
-                    
-                    runOnUiThread {
-                        webView.loadUrl("javascript:onArtistDetailsResultEncoded('$base64Json')")
+                        // 2. Mapear Álbumes
+                        val albumsJsonBuilder = StringBuilder("[")
+                        albumItems.forEachIndexed { index, album ->
+                            val aTitle = album.title.replace("\"", "\\\"")
+                            albumsJsonBuilder.append("{")
+                                .append("\"title\":\"$aTitle\",")
+                                .append("\"year\":\"${album.year ?: ""}\",")
+                                .append("\"thumbnail\":\"${album.thumbnail ?: ""}\"")
+                                .append("}")
+                            if (index < albumItems.size - 1) albumsJsonBuilder.append(",")
+                        }
+                        albumsJsonBuilder.append("]")
+
+                        val finalJson = "{\"name\":\"$nombreReal\",\"thumbnail\":\"$fotoReal\",\"tracks\":$tracksJsonBuilder,\"albums\":$albumsJsonBuilder}"
+                        val base64Json = Base64.encodeToString(finalJson.toByteArray(Charsets.UTF_8), Base64.NO_WRAP)
+                        
+                        runOnUiThread {
+                            webView.loadUrl("javascript:onArtistDetailsResultEncoded('$base64Json')")
+                        }
+                    } catch (e: Exception) {
+                        runOnUiThread {
+                            webView.loadUrl("javascript:onArtistDetailsError('${e.message}')")
+                        }
                     }
                 }.onFailure { error ->
                     runOnUiThread {
-                        Toast.makeText(this@SoundCoreActivity, "Error al procesar artista: ${error.message}", Toast.LENGTH_SHORT).show()
+                        webView.loadUrl("javascript:onArtistDetailsError('${error.message}')")
                     }
                 }
             }

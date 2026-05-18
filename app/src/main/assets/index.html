@@ -425,12 +425,9 @@
         });
 
         // --- 🏎️ FLUX DE INYECCIÓN Y SINCRONIZACIÓN BATERIAL ---
-        
-        // Lanzamiento inicial desde la Grid de la interfaz
         function lanzarReproduccionNativa(titulo, artista, foto, videoId, artistBrowseId) {
             browseIdArtistaActual = artistBrowseId;
 
-            // Construir un payload manual simulado para unificar la vía de renderizado
             var fakePayload = btoa(unescape(encodeURIComponent(JSON.stringify({
                 title: titulo,
                 artist: artista,
@@ -438,7 +435,6 @@
                 artistBrowseId: artistBrowseId
             }))));
             
-            // Sincroniza la UI inmediatamente antes de que el motor responda
             sincronizarPistaNativa(fakePayload);
             setPlaybackState(true);
 
@@ -447,12 +443,10 @@
             }
         }
 
-        // 🔥 ESCUCHA EN TIEMPO REAL: Se ejecuta cuando YT salta de rola automáticamente en Android
         function sincronizarPistaNativa(base64Payload) {
             try {
                 var track = JSON.parse(decodeBase64Utf8(base64Payload));
                 
-                // 1. Sincronizar Mini-Player flotante
                 document.getElementById('pTitle').innerText = track.title;
                 document.getElementById('pArtist').innerText = track.artist;
                 if(track.thumbnail && track.thumbnail.trim() !== "") {
@@ -465,13 +459,11 @@
                     abrirFullPlayer();
                 };
 
-                // 2. Sincronizar Full Player principal
                 document.getElementById('fpTitle').innerText = track.title;
                 if(track.thumbnail && track.thumbnail.trim() !== "") {
                     document.getElementById('fpThumb').src = track.thumbnail;
                 }
                 
-                // 3. Mapeo Dinámico de Colaboradores de la rola activa
                 var fpArtistContainer = document.getElementById('fpArtist');
                 fpArtistContainer.innerHTML = "";
                 var idsArray = track.artistBrowseId ? track.artistBrowseId.split(",") : [];
@@ -585,7 +577,7 @@
                         div.className = 'track-item';
                         div.style.cursor = 'pointer';
                         div.onclick = function() { 
-                            lanzarReproduccionNativa(track.title, track.artist, track.thumbnail, track.id, ""); 
+                            lanzarReproduccionNativa(track.title, track.artist, track.thumbnail, track.id, track.artistBrowseId || ""); 
                         };
                         div.innerHTML = `
                             <img src="${track.thumbnail}" style="width:44px; height:44px; border-radius:6px; margin-right:12px; object-fit:cover;" onerror="this.src='https://placehold.co/50x50/111/fff?text=Music'">
@@ -615,14 +607,10 @@
                     data.albums.forEach(function(album) {
                         var card = document.createElement('div');
                         card.className = 'suggested-card';
-                        card.style.cursor = 'pointer';
-                        card.onclick = function() {
-                            alert("Cargando lista del álbum: " + album.title + " 💿");
-                        };
                         card.innerHTML = `
                             <img src="${album.thumbnail}" alt="cover" style="width:100%; aspect-ratio:1/1; border-radius:10px; object-fit:cover;" onerror="this.src='https://placehold.co/100x100/111/fff?text=Disco'">
                             <div class="card-title" style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-size:14px; font-weight:500; margin-top:8px;">${album.title}</div>
-                            <div class="card-artist" style="font-size:12px; color:var(--text-muted);">${album.year ? album.year : 'Álbum'}</div>
+                            <div class="card-artist" style="font-size:12px; color:var(--text-muted);">${album.year ? album.year : 'Música'}</div>
                         `;
                         gridAlbumes.appendChild(card);
                     });
@@ -630,8 +618,18 @@
                 }
 
             } catch(e) {
-                document.getElementById('artistTracksContainer').innerHTML = `<p style='color:#ff5555; padding:16px;'>Error al mapear discografía: ${e.message}</p>`;
+                onArtistDetailsError(e.message);
             }
+        }
+
+        function onArtistDetailsError(msg) {
+            document.getElementById('apListeners').innerText = "Fallo de conexión";
+            document.getElementById('artistTracksContainer').innerHTML = `
+                <div style='text-align:center; padding:40px 16px;'>
+                    <i class="fa-solid fa-triangle-exclamation" style="font-size:30px; color:#ff5555; margin-bottom:12px;"></i>
+                    <p style='color:var(--text-muted); font-size:14px;'>No se pudo obtener la información de InnerTube.</p>
+                    <p style='color:#ff5555; font-size:11px; margin-top:4px;'>Detalle: ${msg}</p>
+                </div>`;
         }
 
         // --- 💾 SIMULACIÓN DE BIBLIOTECA ---
