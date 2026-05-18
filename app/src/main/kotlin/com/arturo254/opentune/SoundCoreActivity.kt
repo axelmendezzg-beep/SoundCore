@@ -225,18 +225,21 @@ class SoundCoreActivity : ComponentActivity() {
             }
         }
 
-        @JavascriptInterface
+             @JavascriptInterface
         fun loadArtistDetails(browseId: String) {
             val rawId = browseId.trim()
             if (rawId.isEmpty()) return
             
-            val cleanArtistId = if (rawId.contains(",")) {
+            // Si el HTML nos mandó una lista de IDs separados por comas, limpiamos para quedarnos con el primero.
+            // Si es un nombre plano de un artista secundario, pasará limpio sin entrar a este split.
+            val cleanArtistId = if (rawId.contains(",") && (rawId.startsWith("UC") || rawId.startsWith("FM"))) {
                 rawId.split(",").firstOrNull { it.trim().isNotEmpty() }?.trim() ?: rawId
             } else {
                 rawId
             }
 
             activityScope.launch(Dispatchers.IO) {
+                // Si no es un ID de canal de YouTube legítimo, buscamos por su nombre directamente
                 if (!cleanArtistId.startsWith("UC") && !cleanArtistId.startsWith("FM")) {
                     executeFallbackSearch(cleanArtistId)
                     return@launch
@@ -267,12 +270,20 @@ class SoundCoreActivity : ComponentActivity() {
         }
 
         private suspend fun executeFallbackSearch(corruptId: String) {
-            // 🛠️ FIX DE HILOS CLAVE: Saltamos al Main Thread para leer de forma segura el reproductor nativo
-            val currentArtistName = withContext(Dispatchers.Main) {
-                playerConnection?.player?.currentMediaItem?.mediaMetadata?.artist?.toString() ?: ""
+            // PRIORIDAD AL TEXTO SELECCIONADO: Si corruptId ya trae el nombre del artista secundario, usamos ese.
+            // Solo si viene vacío, le pedimos auxilio al reproductor global.
+            val queryTarget = if (corruptId.trim().isNotEmpty()) {
+                corruptId
+            } else {
+                withContext(Dispatchers.Main) {
+                    playerConnection?.player?.currentMediaItem?.mediaMetadata?.artist?.toString() ?: ""
+                }
             }
-            
-            val queryTarget = if (currentArtistName.isNotEmpty()) currentArtistName else corruptId
+
+            if (queryTarget.isEmpty()) {
+                triggerHtmlError("No se especificó un artista para buscar")
+                return
+            }
 
             YouTube.search(queryTarget, YouTube.SearchFilter.FILTER_ARTIST).onSuccess { searchResult ->
                 val legitArtist = searchResult.items.filterIsInstance<ArtistItem>().firstOrNull()
