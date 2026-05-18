@@ -39,6 +39,9 @@ class SoundCoreActivity : ComponentActivity() {
     private val activityScope = CoroutineScope(Dispatchers.Main + Job())
     private var progressJob: Job? = null
 
+    // Variable para rastrear el ID multimedia actual y evitar bucles innecesarios en el WebView
+    private var lastMediaId: String? = null
+
     private val serviceConnection = object : ServiceConnection {
         override fun onServiceConnected(name: ComponentName?, service: IBinder?) {
             isMusicServiceBound = true
@@ -57,36 +60,9 @@ class SoundCoreActivity : ComponentActivity() {
                     }
                 }
 
-                // 🔥 LA CLAVE: Sincroniza la pista actual cuando cambia desde el sistema o notificación
-                activityScope.launch {
-                    conn.currentItem.collectLatest { mediaItem ->
-                        if (mediaItem != null) {
-                            // Extraemos metadatos limpios del objeto multimedia nativo
-                            val title = mediaItem.mediaMetadata.title?.toString()?.replace("\"", "\\\"") ?: "Desconocido"
-                            val artist = mediaItem.mediaMetadata.artist?.toString()?.replace("\"", "\\\"") ?: "Artista Desconocido"
-                            val thumbnail = mediaItem.mediaMetadata.artworkUri?.toString() ?: ""
-                            
-                            // Si guardas el ID de artista en los extras del MediaItem, búscalo; si no, dejamos vacío el fallback inicial
-                            val artistBrowseId = mediaItem.mediaId ?: "" 
-
-                            val json = """
-                                {
-                                    "title": "$title",
-                                    "artist": "$artist",
-                                    "thumbnail": "$thumbnail",
-                                    "artistBrowseId": "$artistBrowseId"
-                                }
-                            """.trimIndent()
-
-                            val base64Json = Base64.encodeToString(json.toByteArray(Charsets.UTF_8), Base64.NO_WRAP)
-                            runOnUiThread {
-                                webView.loadUrl("javascript:onTrackChangedFromNative('$base64Json')")
-                            }
-                        }
-                    }
-                }
-
-                startProgressTracker()
+                // 🔥 CORRECCIÓN CLAVE: Rastreador cíclico seguro acoplado al bucle de progreso
+                // En lugar de recolectar un flujo inexistente en conn, leemos directamente del player nativo
+                startPlaybackTrackers()
             }
         }
         override fun onServiceDisconnected(name: ComponentName?) {
@@ -114,16 +90,46 @@ class SoundCoreActivity : ComponentActivity() {
         bindService(Intent(this, MusicService::class.java), serviceConnection, Context.BIND_AUTO_CREATE)
     }
 
-    private fun startProgressTracker() {
+    private fun startPlaybackTrackers() {
         progressJob?.cancel()
         progressJob = activityScope.launch(Dispatchers.Main) {
             while (isActive) {
                 playerConnection?.player?.let { p ->
+                    // 1. Sincronizar Progreso de la barra de reproducción
                     if (p.isPlaying) {
                         val current = p.currentPosition / 1000
                         val duration = p.duration / 1000
                         if (duration > 0) {
                             webView.loadUrl("javascript:updatePlaybackProgress($current, $duration)")
+                        }
+                    }
+
+                    // 2. 🔥 Sincronizar Metadatos cuando cambia la pista (Next/Prev) desde el sistema/notificación
+                    val currentMediaItem = p.currentMediaItem
+                    if (currentMediaItem != null) {
+                        val mediaId = currentMediaItem.mediaId
+                        if (mediaId != lastMediaId) {
+                            lastMediaId = mediaId
+
+                            val metadata = currentMediaItem.mediaMetadata
+                            val title = metadata.title?.toString()?.replace("\"", "\\\"") ?: "Desconocido"
+                            val artist = metadata.artist?.toString()?.replace("\"", "\\\"") ?: "Artista Desconocido"
+                            val thumbnail = metadata.artworkUri?.toString() ?: ""
+                            
+                            // Pasamos el ID que usa Arturo para identificar el recurso o el artista
+                            val artistBrowseId = mediaId ?: ""
+
+                            val json = """
+                                {
+                                    "title": "$title",
+                                    "artist": "$artist",
+                                    "thumbnail": "$thumbnail",
+                                    "artistBrowseId": "$artistBrowseId"
+                                }
+                            """.trimIndent()
+
+                            val base64Json = Base64.encodeToString(json.toByteArray(Charsets.UTF_8), Base64.NO_WRAP)
+                            webView.loadUrl("javascript:onTrackChangedFromNative('$base64Json')")
                         }
                     }
                 }
@@ -288,4 +294,3 @@ class SoundCoreActivity : ComponentActivity() {
         }
     }
 }
-
