@@ -6,42 +6,48 @@
     --text-main: #ffffff;
     --text-muted: #8e8e93;
     --accent: #ffffff;
+    /* Curva física nativa de Android para transiciones */
+    --android-curve: cubic-bezier(0.1, 0.76, 0.55, 0.94);
 }
 
 body { 
     background-color: var(--bg-main); 
     color: var(--text-main); 
-    font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", sans-serif; 
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; 
     padding: 20px; 
     margin: 0; 
-    padding-bottom: 160px; /* Más espacio abajo para que libre el reproductor Y la nav-bar */
+    padding-bottom: 170px; /* Incrementado para librar con holgura */
     -webkit-tap-highlight-color: transparent;
+    -webkit-user-select: none; /* Evita que el usuario seleccione textos por error como app */
+    user-select: none;
+    overflow-x: hidden;
 }
 
-/* --- MANEJO DE VISTAS --- */
+/* --- MANEJO DE VISTAS (OPTIMIZADO) --- */
 .app-view {
-    display: none; /* Todo oculto por defecto */
+    display: none;
+    will-change: opacity, transform; /* Prepara a la GPU */
 }
 .app-view.active {
-    display: block; /* Solo se muestra la pestaña activa */
-    animation: fadeIn 0.3s ease;
+    display: block; 
+    animation: androidFadeIn 0.28s var(--android-curve) forwards;
 }
 
-@keyframes fadeIn {
-    from { opacity: 0; transform: translateY(5px); }
-    to { opacity: 1; transform: translateY(0); }
+@keyframes androidFadeIn {
+    from { opacity: 0; transform: scale(0.98) translateY(8px); }
+    to { opacity: 1; transform: scale(1) translateY(0); }
 }
 
 .view-header {
     font-size: 26px;
     font-weight: 800;
     margin: 20px 0 25px 0;
-    letter-spacing: 0.5px;
+    letter-spacing: -0.3px;
 }
 
 h1 { 
     text-align: center; 
-    letter-spacing: 6px; 
+    letter-spacing: 5px; 
     font-size: 24px; 
     margin: 25px 0 5px 0; 
     font-weight: 900;
@@ -56,10 +62,10 @@ h1 {
     margin-bottom: 35px;
 }
 
-/* --- REJILLA DE SUGERENCIAS (INICIO) --- */
+/* --- REJILLA DE SUGERENCIAS --- */
 .suggested-grid {
     display: grid;
-    grid-template-columns: repeat(2, 1fr); /* Dos columnas simétricas perfectas */
+    grid-template-columns: repeat(2, 1fr);
     gap: 16px;
 }
 
@@ -69,7 +75,8 @@ h1 {
     border-radius: 16px;
     border: 1px solid var(--border-color);
     cursor: pointer;
-    transition: all 0.2s ease;
+    will-change: transform, background-color;
+    transition: transform 0.15s ease, background-color 0.15s ease;
 }
 
 .suggested-card:active {
@@ -79,11 +86,11 @@ h1 {
 
 .suggested-card img {
     width: 100%;
-    aspect-ratio: 1; /* Cuadrado perfecto estilo CD */
+    aspect-ratio: 1;
     object-fit: cover;
     border-radius: 10px;
     margin-bottom: 10px;
-    box-shadow: 0 6px 16px rgba(0,0,0,0.6);
+    background: #141414; /* Placeholder visual mientras carga */
 }
 
 .card-title {
@@ -118,13 +125,13 @@ input {
     background: var(--bg-input); 
     color: var(--text-main); 
     font-size: 15px; 
-    transition: all 0.3s ease;
+    transition: border-color 0.2s ease, background-color 0.2s ease;
 }
 
 input:focus { 
     border-color: #444; 
     outline: none; 
-    background: #1a1a1a;
+    background: #161616;
 }
 
 .search-box button {
@@ -143,6 +150,7 @@ button {
     color: #000; 
     font-weight: bold; 
     cursor: pointer; 
+    will-change: transform;
     transition: transform 0.1s ease, opacity 0.2s ease;
 }
 
@@ -153,39 +161,55 @@ button:active {
 
 /* --- ELEMENTOS DE LISTA --- */
 .track-item { 
-    display: flex; align-items: center; gap: 16px; background: var(--bg-surface); 
-    padding: 12px; border-radius: 14px; margin-bottom: 12px; border: 1px solid var(--border-color); 
-    transition: all 0.2s ease;
+    display: flex; 
+    align-items: center; 
+    gap: 16px; 
+    background: var(--bg-surface); 
+    padding: 12px; 
+    border-radius: 14px; 
+    margin-bottom: 12px; 
+    border: 1px solid var(--border-color); 
+    will-change: transform, background-color;
+    transition: transform 0.15s ease, background-color 0.15s ease;
 }
 .track-item:active { 
     background: #161616;
     transform: scale(0.98);
 }
-.track-item img { width: 52px; height: 52px; border-radius: 8px; object-fit: cover; }
+.track-item img { width: 52px; height: 52px; border-radius: 8px; object-fit: cover; background: #141414; }
 .track-info { flex: 1; min-width: 0; }
 .track-title { font-weight: 600; font-size: 14px; margin-bottom: 3px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .track-artist { color: var(--text-muted); font-size: 12px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 
-/* --- BARRA DEL REPRODUCTOR (FLOTANTE ABAJO) --- */
+/* --- BARRA DEL REPRODUCTOR (MINI PLAYER MEJORADO) --- */
 .player-bar { 
     position: fixed; 
-    bottom: 85px; /* Recorridda hacia arriba para dejar espacio a la nav-bar */
-    left: 15px; right: 15px; 
-    background: rgba(15, 15, 15, 0.95); 
-    backdrop-filter: blur(25px); -webkit-backdrop-filter: blur(25px);
-    border: 1px solid var(--border-color); 
-    padding: 12px 16px; border-radius: 18px; 
-    display: flex; align-items: center; gap: 14px; z-index: 90; 
-    box-shadow: 0 8px 24px rgba(0,0,0,0.7);
-    animation: slideUp 0.4s cubic-bezier(0.25, 1, 0.5, 1);
+    bottom: 82px; 
+    left: 12px; right: 12px; 
+    background: rgba(12, 12, 12, 0.82); 
+    backdrop-filter: blur(25px); 
+    -webkit-backdrop-filter: blur(25px);
+    border: 1px solid rgba(255, 255, 255, 0.04); 
+    padding: 8px 12px; 
+    border-radius: 18px; 
+    display: flex; 
+    align-items: center; 
+    gap: 12px; 
+    z-index: 90; 
+    box-shadow: 0 12px 32px rgba(0, 0, 0, 0.6);
+    will-change: transform;
+    animation: slideUp 0.35s var(--android-curve) forwards;
+}
+.player-bar:active {
+    background: rgba(20, 20, 20, 0.88);
 }
 
 @keyframes slideUp {
-    from { transform: translateY(100px); opacity: 0; }
-    to { transform: translateY(0); opacity: 1; }
+    from { transform: translate3d(0, 100px, 0); opacity: 0; }
+    to { transform: translate3d(0, 0, 0); opacity: 1; }
 }
 
-.player-thumb { width: 44px; height: 44px; border-radius: 6px; object-fit: cover; }
+.player-thumb { width: 42px; height: 42px; border-radius: 6px; object-fit: cover; }
 .player-info { flex: 1; min-width: 0; }
 .player-title { font-size: 14px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .player-artist { font-size: 12px; color: var(--text-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
@@ -203,20 +227,15 @@ button:active {
     cursor: pointer;
     transition: transform 0.1s ease;
 }
-.play-btn:active {
-    transform: scale(0.9);
-}
-.play-btn i {
-    font-size: 14px;
-    color: #000;
-}
+.play-btn:active { transform: scale(0.88); }
+.play-btn i { font-size: 13px; color: #000; }
 
-/* --- SUBMENÚ / BARRA DE PESTAÑAS (FIJA ABAJO DEL TODO) --- */
+/* --- NAVEGACIÓN FIJA ABAJO --- */
 .nav-bar {
     position: fixed;
     bottom: 0; left: 0; right: 0;
-    height: 70px;
-    background: rgba(5, 5, 5, 0.96);
+    height: 68px;
+    background: #050505;
     border-top: 1px solid var(--border-color);
     display: flex;
     justify-content: space-around;
@@ -239,9 +258,9 @@ button:active {
 }
 
 .nav-icon {
-    font-size: 18px; /* Tamaño perfecto y elegante */
-    margin-bottom: 2px;
-    transition: transform 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+    font-size: 18px;
+    margin-bottom: 1px;
+    transition: transform 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.2) ;
 }
 
 .nav-label {
@@ -249,26 +268,22 @@ button:active {
     font-weight: 500;
 }
 
-.nav-item.active {
-    color: var(--text-main);
-}
+.nav-item.active { color: var(--text-main); }
+.nav-item.active .nav-icon { transform: scale(1.12); }
 
-.nav-item.active .nav-icon {
-    transform: scale(1.15);
-}
-/* --- NUEVO ENCABEZADO PREMIUM DE INICIO --- */
+/* --- ENCABEZADO PREMIUM DE INICIO --- */
 .main-header {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    margin-top: 15px;
+    margin-top: 10px;
     margin-bottom: 25px;
 }
 
 .brand-logo {
-    font-size: 22px;
+    font-size: 21px;
     font-weight: 900;
-    letter-spacing: 4px;
+    letter-spacing: 3px;
     color: var(--text-main);
 }
 
@@ -282,46 +297,39 @@ button:active {
     display: flex;
     align-items: center;
     justify-content: center;
-    transition: transform 0.2s ease, opacity 0.2s ease;
+    transition: transform 0.25s var(--android-curve);
 }
 
 .settings-btn:active {
-    transform: rotate(45deg) scale(0.9); /* Gira levemente la tuerca al picarle */
-    opacity: 0.7;
+    transform: rotate(60deg) scale(0.9);
+    opacity: 0.8;
 }
 
-/* --- BOTONES OVALADOS (FILTER CHIPS) STYLE YT MUSIC --- */
+/* --- FILTER CHIPS PILLS --- */
 .filter-chips {
     display: flex;
     gap: 8px;
-    overflow-x: auto; /* Permite deslizar los botones hacia los lados si no caben */
-    margin-bottom: 30px;
+    overflow-x: auto;
+    margin-bottom: 25px;
     padding-bottom: 5px;
-    /* Oculta la barra de scroll en navegadores */
     scrollbar-width: none; 
+    -webkit-overflow-scrolling: touch;
 }
-.filter-chips::-webkit-scrollbar {
-    display: none;
-}
+.filter-chips::-webkit-scrollbar { display: none; }
 
 .chip {
-    background: #161616;
+    background: #121212;
     color: var(--text-main);
     padding: 8px 16px;
-    border-radius: 20px; /* Forma de píldora óvalo */
+    border-radius: 20px;
     font-size: 13px;
     font-weight: 500;
     white-space: nowrap;
     cursor: pointer;
     border: 1px solid var(--border-color);
-    transition: all 0.2s ease;
+    transition: all 0.15s var(--android-curve);
 }
-
-.chip:active {
-    transform: scale(0.95);
-}
-
-/* Estado de la píldora seleccionada */
+.chip:active { transform: scale(0.95); }
 .chip.active {
     background: var(--text-main);
     color: #000;
@@ -329,15 +337,15 @@ button:active {
     border-color: var(--text-main);
 }
 
-/* Título de la sección de portadas */
 .section-title {
     font-size: 16px;
     font-weight: 700;
     margin-bottom: 15px;
     color: var(--text-main);
-    letter-spacing: 0.3px;
+    letter-spacing: 0.2px;
 }
-/* --- DISEÑO DE LA VISTA DE BIBLIOTECA --- */
+
+/* --- VISTA DE BIBLIOTECA --- */
 .library-header {
     display: flex;
     justify-content: space-between;
@@ -356,128 +364,69 @@ button:active {
     justify-content: center;
     font-size: 16px;
     cursor: pointer;
-    transition: all 0.2s ease;
+    transition: all 0.2s var(--android-curve);
 }
+.create-playlist-btn:active { transform: scale(0.9) rotate(90deg); background: #222; }
 
-.create-playlist-btn:active {
-    transform: scale(0.9) rotate(90deg); /* Efecto giro sutil al picarle */
-    background: #222;
-}
-
-/* Menú de carpetas fijas (Me gusta / Descargas) */
-.library-menu {
-    display: flex;
-    flex-direction: column;
-    gap: 8px;
-    margin-bottom: 20px;
-}
-
+.library-menu { display: flex; flex-direction: column; gap: 8px; margin-bottom: 20px; }
 .menu-item {
-    display: flex;
-    align-items: center;
-    gap: 16px;
-    background: var(--bg-surface);
-    padding: 14px;
-    border-radius: 14px;
-    border: 1px solid var(--border-color);
-    cursor: pointer;
-    transition: all 0.2s ease;
+    display: flex; align-items: center; gap: 16px; background: var(--bg-surface);
+    padding: 14px; border-radius: 14px; border: 1px solid var(--border-color);
+    cursor: pointer; transition: all 0.15s ease;
 }
+.menu-item:active { background: #121212; transform: scale(0.99); }
 
-.menu-item:active {
-    background: #121212;
-    transform: scale(0.99);
-}
-
-/* Contenedores redondos para los iconos del menú */
 .menu-icon-wrapper {
-    width: 44px;
-    height: 44px;
-    border-radius: 50%;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 16px;
+    width: 44px; height: 44px; border-radius: 50%;
+    display: flex; align-items: center; justify-content: center; font-size: 16px;
 }
+.menu-icon-wrapper.likes { background: rgba(255, 45, 85, 0.12); color: #ff2d55; }
+.menu-icon-wrapper.downloads { background: rgba(52, 199, 89, 0.12); color: #34c759; }
+.menu-text { flex: 1; }
+.menu-title { font-size: 15px; font-weight: 600; color: var(--text-main); }
+.menu-desc { font-size: 12px; color: var(--text-muted); margin-top: 2px; }
+.arrow-icon { color: #2c2c2e; font-size: 12px; }
 
-/* Colores personalizados estilo Apple/Spotify */
-.menu-icon-wrapper.likes {
-    background: rgba(255, 45, 85, 0.15); /* Rojo traslúcido */
-    color: #ff2d55;
-}
+.empty-state { text-align: center; padding: 40px 20px; color: #3a3a3c; }
+.empty-state i { font-size: 44px; margin-bottom: 12px; }
+.empty-state p { font-size: 13px; line-height: 1.5; margin: 0; }
 
-.menu-icon-wrapper.downloads {
-    background: rgba(52, 199, 89, 0.15); /* Verde traslúcido */
-    color: #34c759;
-}
-
-.menu-text {
-    flex: 1;
-}
-
-.menu-title {
-    font-size: 15px;
-    font-weight: 600;
-    color: var(--text-main);
-}
-
-.menu-desc {
-    font-size: 12px;
-    color: var(--text-muted);
-    margin-top: 2px;
-}
-
-.arrow-icon {
-    color: #2c2c2e;
-    font-size: 12px;
-}
-
-/* Estado vacío de Playlists */
-.empty-state {
-    text-align: center;
-    padding: 40px 20px;
-    color: #3a3a3c;
-}
-
-.empty-state i {
-    font-size: 48px;
-    margin-bottom: 15px;
-}
-
-.empty-state p {
-    font-size: 13px;
-    line-height: 1.5;
-    margin: 0;
-}
-/* ================= REPRODUCTOR COMPLETO (PANTALLA COMPLETA) ================= */
+/* ================= REPRODUCTOR COMPLETO (PANTALLA COMPLETA PREMIUM) ================= */
 .full-player {
     position: fixed;
     top: 0; left: 0; right: 0; bottom: 0;
-    background: #000000;
-    z-index: 200; /* Por encima de todo, incluso de la nav-bar */
-    transform: translateY(100%); /* Escondido abajo por defecto */
-    transition: transform 0.4s cubic-bezier(0.25, 1, 0.5, 1);
+    background: linear-gradient(to bottom, #0a0a0a 0%, #000000 100%);
+    z-index: 200; 
+    transform: translate3d(0, 100%, 0); /* GPU activada */
+    will-change: transform;
+    transition: transform 0.4s cubic-bezier(0.1, 0.76, 0.55, 0.94);
     padding: 24px;
     display: flex;
     flex-direction: column;
 }
-
-/* Cuando se le agrega la clase .open, sube a pantalla completa */
 .full-player.open {
-    transform: translateY(0);
+    transform: translate3d(0, 0, 0);
 }
 
 .close-player-btn {
-    background: transparent;
+    background: rgba(255, 255, 255, 0.03);
     color: var(--text-muted);
-    border: none;
-    font-size: 22px;
+    border: 1px solid var(--border-color);
+    font-size: 16px;
     align-self: flex-start;
-    padding: 10px 5px;
+    padding: 0;
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
     cursor: pointer;
+    transition: background 0.2s ease, color 0.2s ease;
 }
 .close-player-btn:active {
-    transform: scale(0.9);
+    background: rgba(255, 255, 255, 0.1);
+    color: var(--text-main);
 }
 
 .full-player-content {
@@ -486,370 +435,359 @@ button:active {
     flex-direction: column;
     justify-content: center;
     align-items: center;
-    padding-bottom: 60px;
+    padding-bottom: 30px;
 }
 
-/* Portada gigante estilo Apple Music */
 .full-player-cover {
     width: 85%;
     max-width: 320px;
     aspect-ratio: 1;
     object-fit: cover;
-    border-radius: 24px;
-    box-shadow: 0 16px 40px rgba(0,0,0,0.8);
-    margin-bottom: 40px;
+    border-radius: 28px;
+    margin-bottom: 35px;
+    background: #0e0e0e;
+    box-shadow: 0 16px 40px rgba(0, 0, 0, 0.7), 0 0 0 1px rgba(255, 255, 255, 0.03);
+    transition: transform 0.4s var(--android-curve);
+}
+/* Efecto sutil de pulsación en la carátula cuando el panel abre */
+.full-player.open .full-player-cover {
+    transform: scale(1);
 }
 
 .full-player-meta {
     width: 100%;
     text-align: left;
-    padding: 0 20px;
-    margin-bottom: 25px;
+    padding: 0 12px;
+    margin-bottom: 30px;
 }
 
-.full-player-title {
-    font-size: 22px;
-    font-weight: 800;
-    color: var(--text-main);
-    white-space: nowrap;
-    overflow: hidden;
+.full-player-title { 
+    font-size: 24px; 
+    font-weight: 800; 
+    color: var(--text-main); 
+    white-space: nowrap; 
+    overflow: hidden; 
     text-overflow: ellipsis;
+    letter-spacing: -0.3px;
 }
 
-.full-player-artist {
-    font-size: 16px;
+/* Contenedor e interactividad para los artistas inyectados por JS */
+.full-player-artist { 
+    font-size: 15px; 
+    color: var(--text-muted); 
+    margin-top: 6px; 
+    white-space: nowrap; 
+    overflow: hidden; 
+    text-overflow: ellipsis; 
+}
+
+.fp-individual-artist {
     color: var(--text-muted);
-    margin-top: 4px;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
+    cursor: pointer;
+    display: inline-block;
+    transition: color 0.2s ease;
+}
+.fp-individual-artist:active {
+    color: var(--text-main);
+    text-decoration: underline;
 }
 
-/* --- BARRA DE PROGRESO --- */
-.progress-container {
-    width: 100%;
-    padding: 0 20px;
-    margin-bottom: 35px;
+/* --- BARRA DE PROGRESO PREMIUM INTERACTIVA --- */
+.progress-container { 
+    width: 100%; 
+    padding: 0 12px; 
+    margin-bottom: 35px; 
 }
-
 .progress-bar {
-    width: 100%;
+    width: 100%; 
+    height: 14px; /* Mayor zona táctil para el dedo */
+    background: transparent;
+    display: flex;
+    align-items: center;
+    position: relative; 
+    cursor: pointer;
+}
+/* Línea de fondo visual real */
+.progress-bar::before {
+    content: '';
+    position: absolute;
+    left: 0; right: 0;
     height: 4px;
     background: #1a1a1a;
     border-radius: 2px;
+}
+.progress-current { 
+    height: 4px; 
+    background: var(--text-main); 
+    border-radius: 2px; 
+    width: 0%; 
     position: relative;
-    cursor: pointer;
+    z-index: 2;
 }
-
-.progress-current {
-    height: 100%;
+/* Punto flotante (indicador) estilo Android */
+.progress-current::after {
+    content: '';
+    position: absolute;
+    right: -5px; top: -3px;
+    width: 10px; height: 10px;
     background: var(--text-main);
-    border-radius: 2px;
+    border-radius: 50%;
+    box-shadow: 0 2px 6px rgba(0,0,0,0.5);
+    transform: scale(0);
+    transition: transform 0.15s ease;
+}
+.progress-bar:active .progress-current::after {
+    transform: scale(1.3);
+}
+.progress-time { 
+    display: flex; 
+    justify-content: space-between; 
+    font-size: 11px; 
+    color: var(--text-muted); 
+    margin-top: 6px; 
+    font-variant-numeric: tabular-nums; /* Evita brincos al cambiar los números */
 }
 
-.progress-time {
-    display: flex;
-    justify-content: space-between;
-    font-size: 11px;
-    color: var(--text-muted);
-    margin-top: 8px;
+/* --- CONTROLES MULTIMEDIA --- */
+.full-player-controls { 
+    display: flex; 
+    justify-content: space-between; 
+    align-items: center; 
+    width: 100%; 
+    padding: 0 8px; 
 }
-
-/* --- CONTROLES DE AUDIO --- */
-.full-player-controls {
+.ctrl-btn { 
+    background: transparent; 
+    border: none; 
+    color: var(--text-muted); 
+    font-size: 22px; 
+    cursor: pointer; 
+    width: 44px;
+    height: 44px;
     display: flex;
-    justify-content: space-between;
     align-items: center;
-    width: 100%;
-    padding: 0 10px;
+    justify-content: center;
+    transition: color 0.2s ease, transform 0.1s ease;
 }
-
-.ctrl-btn {
-    background: transparent;
-    border: none;
+.ctrl-btn:active {
     color: var(--text-main);
-    font-size: 20px;
-    cursor: pointer;
+    transform: scale(0.9);
 }
-
-.ctrl-btn.prev-next {
-    font-size: 26px;
+.ctrl-btn.prev-next { 
+    font-size: 26px; 
+    color: var(--text-main);
 }
 
 .ctrl-btn-play {
     background: var(--text-main);
-    color: #000;
+    color: #000; 
     border: none;
-    width: 64px;
-    height: 64px;
+    width: 68px; 
+    height: 68px; 
     border-radius: 50%;
-    font-size: 22px;
-    display: flex;
-    align-items: center;
+    font-size: 24px; 
+    display: flex; 
+    align-items: center; 
     justify-content: center;
-    cursor: pointer;
-    box-shadow: 0 8px 20px rgba(255,255,255,0.1);
-    transition: transform 0.1s ease;
+    cursor: pointer; 
+    box-shadow: 0 8px 24px rgba(255, 255, 255, 0.15);
+    transition: transform 0.15s cubic-bezier(0.1, 0.76, 0.55, 0.94), box-shadow 0.2s ease;
 }
-
-.ctrl-btn-play:active {
-    transform: scale(0.92);
+.ctrl-btn-play:active { 
+    transform: scale(0.90); 
+    box-shadow: 0 4px 12px rgba(255, 255, 255, 0.05);
 }
+.ctrl-btn-play i { color: #000; }
 
-.ctrl-btn-play i {
-    color: #000;
-}
-
-/* ================= PANEL DE PERFIL DE ARTISTA ================= */
+/* ================= PANEL DE ARTISTA (DESLIZAMIENTO LATERAL GPU) ================= */
 .artist-profile-panel {
     position: fixed;
     top: 0; left: 0; right: 0; bottom: 0;
     background: #050505;
-    z-index: 150; /* Por debajo del full-player pero arriba de las vistas */
-    transform: translateX(100%); /* Desplazamiento lateral tipo Android/iOS */
-    transition: transform 0.35s cubic-bezier(0.32, 0.94, 0.6, 1);
+    z-index: 150; 
+    transform: translate3d(100%, 0, 0); /* 🛠️ Desplazamiento lateral por GPU */
+    will-change: transform;
+    transition: transform 0.35s cubic-bezier(0.1, 0.76, 0.55, 0.94);
     display: flex;
     flex-direction: column;
 }
-
-/* Al activarse se desliza desde la derecha */
 .artist-profile-panel.open {
-    transform: translateX(0);
+    transform: translate3d(0, 0, 0);
 }
 
 .artist-panel-header {
     position: absolute;
     top: 0; left: 0; right: 0;
-    height: 60px;
-    display: flex;
-    align-items: center;
-    padding: 0 16px;
-    z-index: 10;
+    height: 60px; display: flex; align-items: center;
+    padding: 0 16px; z-index: 10;
 }
 
 .back-panel-btn {
-    background: rgba(0, 0, 0, 0.5);
-    color: var(--text-main);
-    border: none;
-    width: 38px;
-    height: 38px;
-    border-radius: 50%;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 16px;
-    cursor: pointer;
-    backdrop-filter: blur(8px);
+    background: rgba(0, 0, 0, 0.4);
+    color: var(--text-main); border: none;
+    width: 38px; height: 38px; border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 16px; cursor: pointer; backdrop-filter: blur(4px);
+    -webkit-backdrop-filter: blur(4px);
 }
 
 .artist-panel-content {
-    flex: 1;
-    overflow-y: auto;
-    padding-bottom: 90px; /* Espacio para que la mini barra no tape nada */
+    flex: 1; overflow-y: auto; padding-bottom: 100px;
+    -webkit-overflow-scrolling: touch; /* Inercia nativa móvil */
 }
 
-/* Banner de presentación masiva */
 .artist-banner {
-    width: 100%;
-    height: 260px;
-    background-size: cover;
-    background-position: center;
-    position: relative;
+    width: 100%; height: 260px;
+    background-size: cover; background-position: center;
+    position: relative; background-color: #0a0a0a;
 }
 
 .artist-banner-overlay {
     position: absolute;
     top: 0; left: 0; right: 0; bottom: 0;
-    background: linear-gradient(to bottom, transparent 40%, #050505 100%);
-    display: flex;
-    align-items: flex-end;
-    padding: 20px 16px;
+    background: linear-gradient(to bottom, transparent 30%, #050505 100%);
+    display: flex; align-items: flex-end; padding: 20px 16px;
 }
 
-.artist-panel-name {
-    font-size: 32px;
-    font-weight: 900;
-    color: var(--text-main);
-    letter-spacing: -0.5px;
-    margin: 0;
-}
-
-/* Barra de acciones rápidas */
-.artist-action-bar {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding: 12px 16px;
-}
-
-.artist-stats {
-    font-size: 13px;
-    color: var(--text-muted);
-}
-.artist-stats span {
-    color: var(--text-main);
-    font-weight: 600;
-}
+.artist-panel-name { font-size: 30px; font-weight: 900; color: var(--text-main); letter-spacing: -0.5px; margin: 0; }
+.artist-action-bar { display: flex; justify-content: space-between; align-items: center; padding: 12px 16px; }
+.artist-stats { font-size: 13px; color: var(--text-muted); }
+.artist-stats span { color: var(--text-main); font-weight: 600; }
 
 .artist-play-btn {
-    background: var(--text-main);
-    color: #000;
-    border: none;
-    width: 50px;
-    height: 50px;
-    border-radius: 50%;
-    font-size: 18px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
+    background: var(--text-main); color: #000; border: none;
+    width: 50px; height: 50px; border-radius: 50%;
+    font-size: 18px; display: flex; align-items: center; justify-content: center;
     cursor: pointer;
-    box-shadow: 0 4px 12px rgba(255,255,255,0.1);
 }
-.artist-play-btn:active {
-    transform: scale(0.92);
-}
-.artist-play-btn i {
-    color: #000;
-    margin-left: 2px; /* Alineación óptica del triángulo play */
-}
+.artist-play-btn:active { transform: scale(0.92); }
+.artist-play-btn i { color: #000; margin-left: 2px; }
 
-/* Estilos extra para la lista del artista */
-.artist-top-tracks {
-    display: flex;
-    flex-direction: column;
-}
-/* ================= PANEL DE CONFIGURACIÓN / AJUSTES ================= */
+/* ================= PANEL DE CONFIGURACIÓN ================= */
 .config-panel {
     position: fixed;
     top: 0; left: 0; right: 0; bottom: 0;
     background: #050505;
-    z-index: 140; /* Justo abajo del reproductor gigante pero arriba de las vistas normales */
-    transform: translateX(100%);
-    transition: transform 0.35s cubic-bezier(0.32, 0.94, 0.6, 1);
+    z-index: 140; 
+    transform: translate3d(100%, 0, 0);
+    will-change: transform;
+    transition: transform 0.35s cubic-bezier(0.1, 0.76, 0.55, 0.94);
     display: flex;
     flex-direction: column;
 }
+.config-panel.open { transform: translate3d(0, 0, 0); }
 
-.config-panel.open {
-    transform: translateX(0);
+.config-header { height: 60px; display: flex; align-items: center; padding: 0 16px; border-bottom: 1px solid #121212; }
+.config-header-title { font-size: 18px; font-weight: 700; color: var(--text-main); margin-left: 16px; }
+.config-content { flex: 1; overflow-y: auto; padding: 16px 0 100px 0; -webkit-overflow-scrolling: touch; }
+.config-section { margin-bottom: 24px; }
+.config-section-title { font-size: 12px; font-weight: 700; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.8px; padding: 0 16px 8px 16px; }
+
+.config-item { display: flex; align-items: center; padding: 14px 16px; background: transparent; cursor: pointer; transition: background 0.15s ease; }
+.config-item:not(.no-click):active { background: #121212; }
+.config-item-icon { width: 32px; font-size: 18px; color: var(--text-muted); display: flex; align-items: center; }
+.config-item-text { flex: 1; padding-right: 12px; }
+.config-title { font-size: 15px; font-weight: 500; color: var(--text-main); }
+.config-desc { font-size: 12px; color: var(--text-muted); margin-top: 2px; line-height: 1.4; }
+
+.config-select { background: #141414; color: var(--text-main); border: 1px solid #222; padding: 6px 10px; border-radius: 8px; font-size: 13px; outline: none; }
+
+/* --- SWITCH DESLIZABLE ESTILO HYPEROS --- */
+.switch-container { position: relative; display: inline-block; width: 42px; height: 24px; }
+.switch-container input { display: none; }
+.slider-switch { position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0; background-color: #262629; transition: .25s var(--android-curve); border-radius: 24px; }
+.slider-switch:before { position: absolute; content: ""; height: 18px; width: 18px; left: 3px; bottom: 3px; background-color: white; transition: .25s var(--android-curve); border-radius: 50%; will-change: transform; }
+input:checked + .slider-switch { background-color: var(--text-main); }
+input:checked + .slider-switch:before { transform: translate3d(18px, 0, 0); background-color: #000; }
+
+/* --- SUB-PANELS CONFIG (ACELERACIÓN LATERAL GPU) --- */
+.config-panel.sub-panel {
+    z-index: 145; /* Queda arriba del panel de ajustes base pero abajo del full-player */
+    transform: translate3d(100%, 0, 0); 
+}
+.config-panel.sub-panel.open {
+    transform: translate3d(0, 0, 0);
 }
 
-.config-header {
-    height: 60px;
+/* --- TARJETAS DE DISEÑO DE COLABORADORES --- */
+.dev-container {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    padding: 0 16px 20px 16px;
+}
+
+.dev-card {
     display: flex;
     align-items: center;
-    padding: 0 16px;
-    border-bottom: 1px solid #141414;
+    background: var(--bg-surface);
+    border: 1px solid var(--border-color);
+    padding: 12px 14px;
+    border-radius: 16px;
+    gap: 14px;
 }
 
-.config-header-title {
-    font-size: 18px;
-    font-weight: 700;
-    color: var(--text-main);
-    margin-left: 16px;
-}
-
-.config-content {
-    flex: 1;
-    overflow-y: auto;
-    padding: 16px 0 100px 0; /* Margen abajo para que no estorbe al mini player */
-}
-
-.config-section {
-    margin-bottom: 24px;
-}
-
-.config-section-title {
-    font-size: 13px;
-    font-weight: 700;
-    color: var(--text-muted);
-    text-transform: uppercase;
-    letter-spacing: 0.5px;
-    padding: 0 16px 8px 16px;
-}
-
-.config-item {
-    display: flex;
-    align-items: center;
-    padding: 12px 16px;
-    background: transparent;
-    cursor: pointer;
-    transition: background 0.2s ease;
-}
-.config-item:not(.no-click):active {
+.dev-avatar {
+    width: 46px;
+    height: 46px;
+    border-radius: 50%;
+    object-fit: cover;
+    border: 1.5px solid rgba(255, 255, 255, 0.1);
     background: #141414;
 }
 
-.config-item-icon {
-    width: 32px;
-    font-size: 18px;
-    color: var(--text-muted);
+.dev-avatar-ai {
+    width: 46px;
+    height: 46px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, #1a1a1a 0%, #2c2c2e 100%);
+    color: var(--text-main);
     display: flex;
     align-items: center;
+    justify-content: center;
+    font-size: 18px;
+    border: 1px solid var(--border-color);
 }
 
-.config-item-text {
+.dev-meta {
     flex: 1;
-    padding-right: 12px;
+    min-width: 0;
 }
 
-.config-title {
-    font-size: 15px;
-    font-weight: 500;
+.dev-name {
+    font-size: 14px;
+    font-weight: 600;
     color: var(--text-main);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
 }
 
-.config-desc {
+.dev-role {
     font-size: 12px;
     color: var(--text-muted);
-    margin-top: 2px;
-    line-height: 1.4;
+    margin-top: 3px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
 }
 
-/* Selector Premium en línea */
-.config-select {
+.dev-github-btn {
     background: #141414;
     color: var(--text-main);
-    border: 1px solid #222;
-    padding: 6px 10px;
-    border-radius: 8px;
-    font-size: 13px;
-    outline: none;
-}
-
-/* Switch Deslizable estilo HyperOS/iOS */
-.switch-container {
-    position: relative;
-    display: inline-block;
-    width: 44px;
-    height: 24px;
-}
-.switch-container input { display: none; }
-
-.slider-switch {
-    position: absolute;
-    cursor: pointer;
-    top: 0; left: 0; right: 0; bottom: 0;
-    background-color: #333;
-    transition: .3s;
-    border-radius: 24px;
-}
-.slider-switch:before {
-    position: absolute;
-    content: "";
-    height: 18px;
-    width: 18px;
-    left: 3px;
-    bottom: 3px;
-    background-color: white;
-    transition: .3s;
+    border: 1px solid var(--border-color);
+    width: 36px;
+    height: 36px;
     border-radius: 50%;
+    padding: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 16px;
+    cursor: pointer;
+    transition: transform 0.1s ease, background-color 0.2s ease;
 }
-input:checked + .slider-switch {
-    background-color: var(--text-main); /* Usará tu color principal de acento */
+.dev-github-btn:active {
+    transform: scale(0.9);
+    background: #222;
 }
-input:checked + .slider-switch:before {
-    transform: translateX(20px);
-    background-color: #000;
-}
-

@@ -4,36 +4,8 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>SoundCore Player</title>
-    
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
-    
     <link rel="stylesheet" href="css/style.css">
-    
-    <style>
-        /* Parches rápidos de capas para asegurar que el reproductor mini flote sobre todo */
-        .player-bar {
-            z-index: 9999 !important; /* Encima de absolutamente todo */
-        }
-        .full-player {
-            z-index: 10000 !important; /* El reproductor completo encima del mini si se abre */
-        }
-        .artist-profile-panel, .config-panel {
-            z-index: 9990 !important; /* Los paneles corren justo por debajo del mini-player */
-        }
-        .fp-individual-artist {
-            cursor: pointer;
-        }
-        .fp-individual-artist:hover {
-            text-decoration: underline;
-        }
-        
-        /* Ajuste de área segura para librar la hora y barra de estado en pantalla completa */
-        .artist-panel-header {
-            padding-top: 45px !important; /* Baja el botón de regresar para evitar conflictos con el reloj */
-            display: flex;
-            align-items: center;
-        }
-    </style>
 </head>
 <body>
 
@@ -132,7 +104,7 @@
 
     <div class="player-bar" id="playerBar" style="display: none;">
         <img class="player-thumb" id="pThumb" src="" alt="cover">
-        <div class="player-info">
+        <div class="player-info" onclick="abrirFullPlayer()">
             <div class="player-title" id="pTitle">Título</div>
             <div class="player-artist" id="pArtist">Artista</div>
         </div>
@@ -210,58 +182,38 @@
 
         <div class="config-content">
             <div class="config-section">
-                <div class="config-section-title">Cuenta</div>
-                <div class="config-item" onclick="alert('Próximamente: Inicio de Sesión de SoundCore 🔐')">
-                    <div class="config-item-icon"><i class="fa-solid fa-user"></i></div>
+                <div class="config-section-title">Usuario</div>
+                <div class="config-item" onclick="abrirSubPanel('subPanelCuenta')">
+                    <div class="config-item-icon"><i class="fa-solid fa-circle-user"></i></div>
                     <div class="config-item-text">
-                        <div class="config-title">Iniciar Sesión</div>
-                        <div class="config-desc">Sincroniza tus playlists en cualquier dispositivo</div>
+                        <div class="config-title">Gestión de Cuenta</div>
+                        <div class="config-desc">Perfil, sincronización y servicios en la nube</div>
                     </div>
                     <i class="fa-solid fa-chevron-right arrow-icon"></i>
                 </div>
             </div>
 
             <div class="config-section">
-                <div class="config-section-title">Opciones de reproducción</div>
-                <div class="config-item no-click">
+                <div class="config-section-title">Preferencias</div>
+                <div class="config-item" onclick="abrirSubPanel('subPanelReproduccion')">
                     <div class="config-item-icon"><i class="fa-solid fa-sliders"></i></div>
                     <div class="config-item-text">
-                        <div class="config-title">Calidad de transmisión</div>
-                        <div class="config-desc">Ajusta la fidelidad del flujo de audio</div>
+                        <div class="config-title">Opciones de Reproducción</div>
+                        <div class="config-desc">Calidad de transmisión y almacenamiento local</div>
                     </div>
-                    <select class="config-select" id="cfgCalidad">
-                        <option value="baja">Baja (Móvil)</option>
-                        <option value="normal" selected>Normal (128 kbps)</option>
-                        <option value="alta">Alta (320 kbps)</option>
-                    </select>
-                </div>
-
-                <div class="config-item no-click">
-                    <div class="config-item-icon"><i class="fa-solid fa-arrow-down-to-line"></i></div>
-                    <div class="config-item-text">
-                        <div class="config-title">Descargar canciones</div>
-                        <div class="config-desc">Permitir almacenamiento local fuera de línea</div>
-                    </div>
-                    <label class="switch-container">
-                        <input type="checkbox" id="cfgDescargas" checked>
-                        <span class="slider-switch"></span>
-                    </label>
+                    <i class="fa-solid fa-chevron-right arrow-icon"></i>
                 </div>
             </div>
 
             <div class="config-section">
-                <div class="config-section-title">Acerca de</div>
-                <div class="config-item no-click">
+                <div class="config-section-title">Información</div>
+                <div class="config-item" onclick="abrirSubPanel('subPanelAcerca')">
                     <div class="config-item-icon"><i class="fa-solid fa-code"></i></div>
                     <div class="config-item-text">
-                        <div class="config-title">Creador y Colaboradores</div>
-                        <div class="config-desc" style="color: var(--text-main); font-weight: 500; margin-top: 4px;">
-                            👑 Cristopher Axel Mendez<br>
-                            💻 Saúl Torres<br>
-                            💻 Arturo (OpenTune Engine)<br>
-                            🤖 Gemini (Tu compa de IA)
-                        </div>
+                        <div class="config-title">Acerca de SoundCore</div>
+                        <div class="config-desc">Equipo de desarrollo, código fuente y licencias</div>
                     </div>
+                    <i class="fa-solid fa-chevron-right arrow-icon"></i>
                 </div>
 
                 <div class="config-item" onclick="alert('Abriendo Términos de Servicio y Privacidad de SoundCore 📜')">
@@ -276,6 +228,148 @@
         </div>
     </div>
 
+    <div class="config-panel sub-panel" id="subPanelCuenta">
+        <div class="config-header">
+            <button class="back-panel-btn" onclick="cerrarSubPanel('subPanelCuenta')">
+                <i class="fa-solid fa-chevron-left"></i>
+            </button>
+            <span class="config-header-title">Cuenta</span>
+        </div>
+        <div class="config-content">
+            <div style="text-align: center; padding: 40px 20px;">
+                <i class="fa-solid fa-lock" style="font-size: 48px; color: var(--text-muted); margin-bottom: 20px;"></i>
+                <h3 style="margin: 0 0 10px 0; font-size: 18px;">Sincronización en la Nube</h3>
+                <p style="color: var(--text-muted); font-size: 13px; line-height: 1.5; margin-bottom: 30px;">
+                    Inicia sesión para guardar tus listas de reproducción y favoritos de forma segura en cualquier dispositivo.
+                </p>
+                <button style="width: 100%; max-width: 260px;" onclick="alert('Próximamente: Inicio de Sesión de SoundCore 🔐')">
+                    Iniciar Sesión
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <div class="config-panel sub-panel" id="subPanelReproduccion">
+        <div class="config-header">
+            <button class="back-panel-btn" onclick="cerrarSubPanel('subPanelReproduccion')">
+                <i class="fa-solid fa-chevron-left"></i>
+            </button>
+            <span class="config-header-title">Opciones de audio</span>
+        </div>
+        <div class="config-content">
+            <div class="config-section">
+                <div class="config-section-title">Calidad del flujo</div>
+                <div class="config-item no-click">
+                    <div class="config-item-icon"><i class="fa-solid fa-music"></i></div>
+                    <div class="config-item-text">
+                        <div class="config-title">Calidad de transmisión</div>
+                        <div class="config-desc">Ajusta la fidelidad en redes móviles y Wi-Fi</div>
+                    </div>
+                    <select class="config-select" id="cfgCalidad">
+                        <option value="baja">Baja (Móvil)</option>
+                        <option value="normal" selected>Normal (128 kbps)</option>
+                        <option value="alta">Alta (320 kbps)</option>
+                    </select>
+                </div>
+            </div>
+
+            <div class="config-section">
+                <div class="config-section-title">Almacenamiento</div>
+                <div class="config-item no-click">
+                    <div class="config-item-icon"><i class="fa-solid fa-arrow-down-to-line"></i></div>
+                    <div class="config-item-text">
+                        <div class="config-title">Descargar canciones</div>
+                        <div class="config-desc">Permitir almacenamiento local fuera de línea</div>
+                    </div>
+                    <label class="switch-container">
+                        <input type="checkbox" id="cfgDescargas" checked>
+                        <span class="slider-switch"></span>
+                    </label>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="config-panel sub-panel" id="subPanelAcerca">
+    <div class="config-header">
+        <button class="back-panel-btn" onclick="cerrarSubPanel('subPanelAcerca')">
+            <i class="fa-solid fa-chevron-left"></i>
+        </button>
+        <span class="config-header-title">Acerca de</span>
+    </div>
+    <div class="config-content" style="padding-top: 10px;">
+        
+        <div style="text-align: center; padding: 20px 0 30px 0;">
+            <div style="font-size: 24px; font-weight: 900; letter-spacing: 5px;">SOUNDCORE</div>
+            <div style="font-size: 11px; color: var(--text-muted); text-transform: uppercase; letter-spacing: 2px; margin-top: 4px;">Versión 1.0.0 (Core Engine)</div>
+        </div>
+
+        <div class="config-section-title" style="padding-left: 20px;">Equipo de Desarrollo</div>
+        <div class="dev-container">
+            <div class="dev-card">
+                <img src="https://i.ibb.co/q3T727RQ/9316a61fdb7847aabd64c3feb2798523-webp.webp" alt="Axel" class="dev-avatar" onerror="this.src='https://placehold.co/100/111/fff?text=👑'">
+                <div class="dev-meta">
+                    <div class="dev-name">Axel Mendez</div>
+                    <div class="dev-role">👑 Project Lead & System Architect</div>
+                </div>
+                <button class="dev-github-btn" onclick="window.open('https://github.com/tu_usuario_aquí', '_blank')">
+                    <i class="fa-brands fa-github"></i>
+                </button>
+            </div>
+
+            <div class="dev-card">
+                <img src="https://i.ibb.co/SwJy9NMj/86b9d825198ab4c1df8f5a2ac5134336-webp.webp" alt="Saúl" class="dev-avatar" onerror="this.src='https://placehold.co/100/111/fff?text=💻'">
+                <div class="dev-meta">
+                    <div class="dev-name">Saúl Torres</div>
+                    <div class="dev-role">💻 Core Developer & UI Engineer</div>
+                </div>
+                <button class="dev-github-btn" onclick="window.open('https://github.com/usuario_saul', '_blank')">
+                    <i class="fa-brands fa-github"></i>
+                </button>
+            </div>
+
+            <div class="dev-card">
+                <img src="https://i.ibb.co/HD248CJG/85bef544e17c77625b6185cc0ef2dc91-webp.webp" alt="Lizbeth" class="dev-avatar" onerror="this.src='https://placehold.co/100/111/fff?text=🎨'">
+                <div class="dev-meta">
+                    <div class="dev-name">Lizbeth</div>
+                    <div class="dev-role">🎨 UI/UX Creative Designer</div>
+                </div>
+                <button class="dev-github-btn" onclick="window.open('https://github.com/usuario_lizbeth', '_blank')">
+                    <i class="fa-brands fa-github"></i>
+                </button>
+            </div>
+        </div>
+
+        <div class="config-section-title" style="padding-left: 20px; margin-top: 15px;">Inspiración del Proyecto</div>
+<div class="dev-container">
+    <div class="dev-card" style="background: rgba(255, 255, 255, 0.02); border-style: dashed;">
+        <img src="https://avatars.githubusercontent.com/u/107134739?v=4" alt="koiverse" class="dev-avatar" onerror="this.src='https://placehold.co/100/111/fff?text=💿'">
+        <div class="dev-meta">
+            <div class="dev-name">koiverse</div>
+            <div class="dev-role">💿 Creator & developer of ArchiveTune</div>
+        </div>
+        <button class="dev-github-btn" onclick="window.open('https://github.com/koiverse', '_blank')" style="opacity: 0.8;">
+            <i class="fa-brands fa-github"></i>
+        </button>
+    </div>
+</div>
+
+        <div style="text-align: center; margin-top: 25px; padding: 0 16px;">
+            <div style="font-size: 11px; color: var(--text-muted); text-transform: uppercase; letter-spacing: 1px; margin-bottom: 8px;">Soporte Técnico Especial</div>
+            <div style="display: inline-flex; align-items: center; gap: 8px; background: #0c0c0c; padding: 6px 14px; border-radius: 20px; border: 1px solid var(--border-color);">
+                <i class="fa-solid fa-robot" style="font-size: 12px; color: var(--text-muted);"></i>
+                <span style="font-size: 12px; color: var(--text-main); font-weight: 500;">Gemini AI</span>
+                <span style="font-size: 12px; color: var(--text-muted);">• Tu compa de código (Copiloto)</span>
+            </div>
+        </div>
+
+        <div style="padding: 30px 16px 20px 16px; text-align: center; font-size: 11px; color: var(--text-muted); line-height: 1.6;">
+            Created by Axel • Not associated with YouTube<br>
+            Diseñado con pasión para ofrecer una experiencia musical libre. Hecho en México. 🇲🇽
+        </div>
+    </div>
+</div>
+
     <nav class="nav-bar">
         <div class="nav-item active" id="tab-inicio" onclick="cambiarPestaña('inicio')">
             <i class="fa-solid fa-house nav-icon"></i>
@@ -289,9 +383,9 @@
             <i class="fa-solid fa-compact-disc nav-icon"></i>
             <span class="nav-label">Biblioteca</span>
         </div>
-    </nav>
+    </nav>                                                    
 
-    <script>
+        <script>
         // --- 📊 VARIABLES GLOBALES DE ESTADO ---
         var duracionCancionActual = 0;
         var browseIdArtistaActual = "";
@@ -324,6 +418,10 @@
         function abrirConfigPanel() { document.getElementById('configPanel').classList.add('open'); }
         function cerrarConfigPanel() { document.getElementById('configPanel').classList.remove('open'); }
         function cerrarArtistPanel() { document.getElementById('artistPanel').classList.remove('open'); }
+        
+        // Control de los nuevos sub-paneles premium de ajustes
+        function abrirSubPanel(id) { document.getElementById(id).classList.add('open'); }
+        function cerrarSubPanel(id) { document.getElementById(id).classList.remove('open'); }
 
         function filtrarCategoria(categoria, e) {
             document.querySelectorAll('.chip').forEach(c => c.classList.remove('active'));
@@ -390,7 +488,6 @@
             lanzarReproduccionNativa(titulo, artista, foto, videoId, "");
         }
 
-        // Vinculación de funciones de reproducción con el puente nativo Android
         function togglePlaySimulado() {
             if (typeof SoundCoreBridge !== "undefined") { SoundCoreBridge.togglePlayPause(); }
         }
@@ -439,7 +536,7 @@
             }
         });
 
-        // --- 🏎️ FLUX DE INYECCIÓN Y SINCRONIZACIÓN ---
+        // --- 🗺️ FLUX DE INYECCIÓN Y SINCRONIZACIÓN ---
         function lanzarReproduccionNativa(titulo, artista, foto, videoId, artistBrowseId) {
             browseIdArtistaActual = artistBrowseId;
 
@@ -458,7 +555,7 @@
             }
         }
 
-                function sincronizarPistaNativa(base64Payload) {
+        function sincronizarPistaNativa(base64Payload) {
             try {
                 var track = JSON.parse(decodeBase64Utf8(base64Payload));
                 
@@ -488,7 +585,6 @@
                     var artistasArray = track.artist.split(",");
                     artistasArray.forEach(function(art, index) {
                         var nombreLimpio = art.trim();
-                        // Si no existe un ID para este artista secundario, le inyectamos su propio nombre como ID temporal
                         var bid = idsArray[index] ? idsArray[index].trim() : nombreLimpio;
                         
                         var span = document.createElement('span');
@@ -499,7 +595,6 @@
                             e.stopPropagation();
                             cerrarFullPlayer();
                             
-                            // Si es un nombre plano, forzamos búsqueda limpia por texto nativo
                             if (bid !== "" && !bid.startsWith("UC") && !bid.startsWith("FM")) {
                                 abrirArtistPanelReal(nombreLimpio, nombreLimpio);
                             } else if (bid !== "") {
@@ -535,17 +630,16 @@
             }
         }
 
-// --- 🔄 RECEPTOR EXCLUSIVO PARA CAMBIOS DE PISTA NATIVOS ---
-function onTrackChangedFromNative(base64Payload) {
-    try {
-        // Reutilizamos la lógica robusta de sincronización que ya armaste
-        sincronizarPistaNativa(base64Payload);
-    } catch (e) {
-        console.error("Error sincronizando cambio de pista nativo: " + e.message);
-    }
-}
+        // --- 🔄 RECEPTOR EXCLUSIVO PARA CAMBIOS DE PISTA NATIVOS ---
+        function onTrackChangedFromNative(base64Payload) {
+            try {
+                sincronizarPistaNativa(base64Payload);
+            } catch (e) {
+                console.error("Error sincronizando cambio de pista nativo: " + e.message);
+            }
+        }
 
-          // --- 🎤 SECCIÓN DE ARTISTAS ---
+        // --- 🎤 SECCIÓN DE ARTISTAS ---
         const infoArtistas = {
             "Kanye West": { banner: "https://images.unsplash.com/photo-1611339555312-e607c8352fd7?q=80&w=600", listeners: "74,103,449" },
             "Bad Bunny": { banner: "https://images.unsplash.com/photo-1571330735066-03add575afe8?q=80&w=600", listeners: "69,541,200" },
@@ -610,8 +704,6 @@ function onTrackChangedFromNative(base64Payload) {
                         div.className = 'track-item';
                         div.style.cursor = 'pointer';
                         
-                        // 🛠️ BLINDAJE DE CLICS: Si la canción popular no trae un ID de artista propio, 
-                        // le heredamos el del artista actual del panel para no mandar IDs de video corruptos.
                         var trackArtistId = track.artistBrowseId || data.id || document.getElementById('apName').innerText;
 
                         div.onclick = function() { 
@@ -679,6 +771,7 @@ function onTrackChangedFromNative(base64Payload) {
                     <p style='color:#ff5555; font-size:11px; margin-top:4px;'>Detalle: ${msg}</p>
                 </div>`;
         }
+
         // --- 💾 SIMULACIÓN DE BIBLIOTECA ---
         function crearPlaylistSimulada() {
             let nombre = prompt("Nombre de tu nueva Playlist:", "Mix Perrón " + (++contadorPlaylists));
