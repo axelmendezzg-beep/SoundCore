@@ -110,7 +110,9 @@ class SoundCoreActivity : ComponentActivity() {
                             val artist = metadata.artist?.toString()?.replace("\"", "\\\"") ?: "Artista Desconocido"
                             val thumbnail = metadata.artworkUri?.toString() ?: ""
                             
-                            val artistBrowseId = mediaId ?: artist
+                            // Aquí es donde a veces el mediaId pisaba el id de artista.
+                            // Le pasamos el nombre del artista como salvavidas si no es un ID válido.
+                            val artistBrowseId = if (mediaId != null && (mediaId.startsWith("UC") || mediaId.startsWith("FM"))) mediaId else artist
 
                             val json = """
                                 {
@@ -228,14 +230,16 @@ class SoundCoreActivity : ComponentActivity() {
             val rawId = browseId.trim()
             if (rawId.isEmpty()) return
             
-            val cleanArtistId = if (rawId.contains(",") && (rawId.startsWith("UC") || rawId.startsWith("FM"))) {
+            var cleanArtistId = if (rawId.contains(",") && (rawId.startsWith("UC") || rawId.startsWith("FM"))) {
                 rawId.split(",").firstOrNull { it.trim().isNotEmpty() }?.trim() ?: rawId
             } else {
                 rawId
             }
 
             activityScope.launch(Dispatchers.IO) {
-                if (!cleanArtistId.startsWith("UC") && !cleanArtistId.startsWith("FM")) {
+                // DETECTOR DE ID DE VIDEO CONTAMINADO: 
+                // Si mide 11 letras o no empieza con la estructura de canales de YT, es un videoId intruso.
+                if (cleanArtistId.length == 11 || (!cleanArtistId.startsWith("UC") && !cleanArtistId.startsWith("FM"))) {
                     executeFallbackSearch(cleanArtistId)
                     return@launch
                 }
@@ -248,15 +252,18 @@ class SoundCoreActivity : ComponentActivity() {
                         
                         val sections = artistPage.sections
                         
+                        // Buscador de canciones populares flexible (Inglés / Español)
                         val songsSection = sections.firstOrNull { section ->
                             val lowerTitle = section.title.lowercase()
                             lowerTitle.contains("canción") || lowerTitle.contains("canciones") || 
-                            lowerTitle.contains("song") || lowerTitle.contains("top")
+                            lowerTitle.contains("song") || lowerTitle.contains("top") || lowerTitle.contains("hits")
                         }
 
+                        // Buscador de álbumes flexible (Soporta album, albums, sencillos, singles, discography)
                         val albumsSection = sections.firstOrNull { section ->
                             val lowerTitle = section.title.lowercase()
-                            lowerTitle.contains("álbum") || lowerTitle.contains("album") || lowerTitle.contains("discografía")
+                            lowerTitle.contains("álbum") || lowerTitle.contains("album") || 
+                            lowerTitle.contains("disc") || lowerTitle.contains("single") || lowerTitle.contains("sencillo")
                         }
 
                         val officialSongs = songsSection?.items?.filterIsInstance<SongItem>() ?: emptyList()
@@ -282,7 +289,9 @@ class SoundCoreActivity : ComponentActivity() {
         }
 
         private suspend fun executeFallbackSearch(corruptId: String) {
-            val queryTarget = if (corruptId.trim().isNotEmpty()) {
+            // Si el corruptId es un videoId de 11 letras, no nos sirve para buscar texto.
+            // Le pedimos auxilio al reproductor para sacar el nombre real del artista actual.
+            val queryTarget = if (corruptId.trim().isNotEmpty() && corruptId.length != 11) {
                 corruptId
             } else {
                 withContext(Dispatchers.Main) {
@@ -291,7 +300,7 @@ class SoundCoreActivity : ComponentActivity() {
             }
 
             if (queryTarget.isEmpty()) {
-                triggerHtmlError("No se especificó un artista para buscar")
+                triggerHtmlError("No se especificó un artista legítimo para buscar")
                 return
             }
 
@@ -300,13 +309,38 @@ class SoundCoreActivity : ComponentActivity() {
                 val trackName = legitArtist?.title ?: queryTarget
                 val trackPhoto = legitArtist?.thumbnail ?: ""
                 
-                YouTube.search(queryTarget, YouTube.SearchFilter.FILTER_SONG).onSuccess { songResult ->
-                    sendManualPayload(trackName, trackPhoto, songResult.items.filterIsInstance<SongItem>(), emptyList())
-                }.onFailure { err ->
-                    triggerHtmlError(err.message)
+                YouTube.artist(legitArtist?.id ?: "").onSuccess { fallbackPage ->
+                    val sections = fallbackPage.sections
+                    val songsSection = sections.firstOrNull { s -> 
+                        val l = s.title.lowercase()
+                        l.contains("can") || l.contains("song") || l.contains("top") 
+                    }
+                    val albumsSection = sections.firstOrNull { s -> 
+                        val l = s.title.lowercase()
+                        l.contains("alb") || l.contains("disc") || l.contains("sing") 
+                    }
+                    
+                    val fSongs = songsSection?.items?.filterIsInstance<SongItem>() ?: emptyList()
+                    val fAlbums = albumsSection?.items?.filterIsInstance<AlbumItem>() ?: emptyList()
+                    
+                    if (fSongs.isNotEmpty()) {
+                        sendManualPayload(trackName, trackPhoto, fSongs, fAlbums)
+                    } else {
+                        executeSongSearchFallback(queryTarget, trackName, trackPhoto)
+                    }
+                }.onFailure {
+                    executeSongSearchFallback(queryTarget, trackName, trackPhoto)
                 }
             }.onFailure { error ->
                 triggerHtmlError(error.message)
+            }
+        }
+
+        private suspend fun executeSongSearchFallback(query: String, trackName: String, trackPhoto: String) {
+            YouTube.search(query, YouTube.SearchFilter.FILTER_SONG).onSuccess { songResult ->
+                sendManualPayload(trackName, trackPhoto, songResult.items.filterIsInstance<SongItem>(), emptyList())
+            }.onFailure { err ->
+                triggerHtmlError(err.message)
             }
         }
 
@@ -356,4 +390,3 @@ class SoundCoreActivity : ComponentActivity() {
         }
     }
 }
-
