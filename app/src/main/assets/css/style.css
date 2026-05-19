@@ -391,24 +391,55 @@ button:active {
 .empty-state i { font-size: 44px; margin-bottom: 12px; }
 .empty-state p { font-size: 13px; line-height: 1.5; margin: 0; }
 
-/* ================= REPRODUCTOR COMPLETO (PANTALLA COMPLETA PREMIUM) ================= */
+/* ================= REPRODUCTOR COMPLETO WITH BLUR BACKDROP ================= */
 .full-player {
     position: fixed;
     top: 0; left: 0; right: 0; bottom: 0;
-    background: linear-gradient(to bottom, #0a0a0a 0%, #000000 100%);
-    z-index: 200; 
+    background: #000000; /* Fondo base de seguridad */
+    z-index: 99999; 
+    
+    /* FUERZA EN ANDROID QUE ESTÉ HASTA ARRIBA EN EL ESPACIO 3D */
+    transform-style: preserve-3d;
+    
     transform: translate3d(0, 100%, 0); /* GPU activada */
-    will-change: transform;
+    will-change: transform, z-index;
     transition: transform 0.4s cubic-bezier(0.1, 0.76, 0.55, 0.94);
     padding: 24px;
     display: flex;
     flex-direction: column;
+    overflow: hidden; /* Evita que el difuminado se salga de la pantalla */
 }
 .full-player.open {
     transform: translate3d(0, 0, 0);
 }
 
+/* LA MAGIA: Capa del fondo dinámico difuminado */
+.full-player-blur-bg {
+    position: absolute;
+    top: -10%; left: -10%;
+    width: 120%; height: 120%; /* Más grande para que el blur no deje bordes blancos en las esquinas */
+    background-size: cover;
+    background-position: center;
+    filter: blur(50px) saturate(1.6) brightness(0.45); /* Difumina, aviva colores y oscurece para legibilidad */
+    -webkit-filter: blur(50px) saturate(1.6) brightness(0.45);
+    z-index: -1; /* Se va detrás de todos los botones y textos */
+    will-change: background-image;
+    transition: background-image 0.6s ease-in-out; /* Transición suave al cambiar de rola */
+}
+
+/* Capa extra de degradado oscuro abajo para que los textos y controles resalten perfecto */
+.full-player::after {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0; bottom: 0;
+    background: linear-gradient(to bottom, rgba(0,0,0,0.1) 0%, rgba(0,0,0,0.8) 100%);
+    z-index: 0;
+    pointer-events: none;
+}
+
 .close-player-btn {
+    position: relative;
+    z-index: 2; /* Asegura que quede por encima del fondo blur */
     background: rgba(255, 255, 255, 0.03);
     color: var(--text-muted);
     border: 1px solid var(--border-color);
@@ -430,6 +461,8 @@ button:active {
 }
 
 .full-player-content {
+    position: relative;
+    z-index: 2; /* Asegura que el contenido flote arriba del fondo blur */
     flex: 1;
     display: flex;
     flex-direction: column;

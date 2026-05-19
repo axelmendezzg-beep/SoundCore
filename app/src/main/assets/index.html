@@ -102,18 +102,9 @@
         </div>
     </section>
 
-    <div class="player-bar" id="playerBar" style="display: none;">
-        <img class="player-thumb" id="pThumb" src="" alt="cover">
-        <div class="player-info" onclick="abrirFullPlayer()">
-            <div class="player-title" id="pTitle">Título</div>
-            <div class="player-artist" id="pArtist">Artista</div>
-        </div>
-        <button class="play-btn" id="pBtn" onclick="togglePlaySimulado()"><i class="fa-solid fa-play"></i></button>
-    </div>
-
-    <div class="artist-profile-panel" id="artistPanel">
-        <div class="artist-panel-header">
-            <button class="back-panel-btn" onclick="cerrarArtistPanel()">
+       <div class="artist-profile-panel" id="artistPanel">
+        <div class="artist-panel-header" style="padding-top: 35px; height: auto;">
+            <button class="back-panel-btn" onclick="cerrarArtistPanel()">                  
                 <i class="fa-solid fa-chevron-left"></i>
             </button>
         </div>
@@ -139,41 +130,8 @@
         </div>
     </div>
 
-    <div class="full-player" id="fullPlayer">
-        <button class="close-player-btn" onclick="cerrarFullPlayer()">
-            <i class="fa-solid fa-chevron-down"></i>
-        </button>
-
-        <div class="full-player-content">
-            <img class="full-player-cover" id="fpThumb" src="" alt="cover">
-
-            <div class="full-player-meta">
-                <div class="full-player-title" id="fpTitle">Título de la Canción</div>
-                <div class="full-player-artist" id="fpArtist">Artista de la rola</div>
-            </div>
-
-            <div class="progress-container">
-                <div class="progress-bar" id="realProgressBar">
-                    <div class="progress-current" style="width: 0%;"></div>
-                </div>
-                <div class="progress-time">
-                    <span id="timeCurrent">0:00</span>
-                    <span id="timeTotal">0:00</span>
-                </div>
-            </div>
-
-            <div class="full-player-controls">
-                <button class="ctrl-btn text-muted"><i class="fa-solid fa-shuffle"></i></button>
-                <button class="ctrl-btn prev-next" onclick="saltarAnterior()"><i class="fa-solid fa-backward-step"></i></button>
-                <button class="ctrl-btn-play" id="fpBtn" onclick="togglePlaySimulado()"><i class="fa-solid fa-play"></i></button>
-                <button class="ctrl-btn prev-next" onclick="saltarSiguiente()"><i class="fa-solid fa-forward-step"></i></button>
-                <button class="ctrl-btn text-muted"><i class="fa-solid fa-repeat"></i></button>
-            </div>
-        </div>
-    </div>
-
-    <div class="config-panel" id="configPanel">
-        <div class="config-header">
+        <div class="config-panel" id="configPanel">
+        <div class="config-header" style="padding-top: 35px; display: flex; align-items: center;">
             <button class="back-panel-btn" onclick="cerrarConfigPanel()">
                 <i class="fa-solid fa-chevron-left"></i>
             </button>
@@ -229,8 +187,8 @@
     </div>
 
     <div class="config-panel sub-panel" id="subPanelCuenta">
-        <div class="config-header">
-            <button class="back-panel-btn" onclick="cerrarSubPanel('subPanelCuenta')">
+    <div class="config-header" style="padding-top: 35px; display: flex; align-items: center;">
+        <button class="back-panel-btn" onclick="cerrarSubPanel('subPanelCuenta')">
                 <i class="fa-solid fa-chevron-left"></i>
             </button>
             <span class="config-header-title">Cuenta</span>
@@ -250,8 +208,8 @@
     </div>
 
     <div class="config-panel sub-panel" id="subPanelReproduccion">
-        <div class="config-header">
-            <button class="back-panel-btn" onclick="cerrarSubPanel('subPanelReproduccion')">
+    <div class="config-header" style="padding-top: 35px; display: flex; align-items: center;">
+        <button class="back-panel-btn" onclick="cerrarSubPanel('subPanelReproduccion')">
                 <i class="fa-solid fa-chevron-left"></i>
             </button>
             <span class="config-header-title">Opciones de audio</span>
@@ -291,86 +249,130 @@
     </div>
 
     <div class="config-panel sub-panel" id="subPanelAcerca">
-    <div class="config-header">
+    <div class="config-header" style="padding-top: 35px; display: flex; align-items: center;">
         <button class="back-panel-btn" onclick="cerrarSubPanel('subPanelAcerca')">
-            <i class="fa-solid fa-chevron-left"></i>
-        </button>
-        <span class="config-header-title">Acerca de</span>
-    </div>
-    <div class="config-content" style="padding-top: 10px;">
-        
-        <div style="text-align: center; padding: 20px 0 30px 0;">
-            <div style="font-size: 24px; font-weight: 900; letter-spacing: 5px;">SOUNDCORE</div>
-            <div style="font-size: 11px; color: var(--text-muted); text-transform: uppercase; letter-spacing: 2px; margin-top: 4px;">Versión 1.0.0 (Core Engine)</div>
+                <i class="fa-solid fa-chevron-left"></i>
+            </button>
+            <span class="config-header-title">Acerca de</span>
         </div>
+        <div class="config-content" style="padding-top: 10px;">
+            <div style="text-align: center; padding: 20px 0 30px 0;">
+                <div style="font-size: 24px; font-weight: 900; letter-spacing: 5px;">SOUNDCORE</div>
+                <div style="font-size: 11px; color: var(--text-muted); text-transform: uppercase; letter-spacing: 2px; margin-top: 4px;">Versión 1.0.0 (Core Engine)</div>
+            </div>
 
-        <div class="config-section-title" style="padding-left: 20px;">Equipo de Desarrollo</div>
-        <div class="dev-container">
-            <div class="dev-card">
-                <img src="https://i.ibb.co/q3T727RQ/9316a61fdb7847aabd64c3feb2798523-webp.webp" alt="Axel" class="dev-avatar" onerror="this.src='https://placehold.co/100/111/fff?text=👑'">
-                <div class="dev-meta">
-                    <div class="dev-name">Axel Mendez</div>
-                    <div class="dev-role">👑 Project Lead & System Architect</div>
+            <div class="config-section-title" style="padding-left: 20px;">Equipo de Desarrollo</div>
+            <div class="dev-container">
+                <div class="dev-card">
+                    <img src="https://i.ibb.co/q3T727RQ/9316a61fdb7847aabd64c3feb2798523-webp.webp" alt="Axel" class="dev-avatar" onerror="this.src='https://placehold.co/100/111/fff?text=👑'">
+                    <div class="dev-meta">
+                        <div class="dev-name">Axel Mendez</div>
+                        <div class="dev-role">👑 Project Lead & System Architect</div>
+                    </div>
+                    <button class="dev-github-btn" onclick="window.open('https://github.com/tu_usuario_aquí', '_blank')">
+                        <i class="fa-brands fa-github"></i>
+                    </button>
                 </div>
-                <button class="dev-github-btn" onclick="window.open('https://github.com/tu_usuario_aquí', '_blank')">
-                    <i class="fa-brands fa-github"></i>
-                </button>
-            </div>
 
-            <div class="dev-card">
-                <img src="https://i.ibb.co/SwJy9NMj/86b9d825198ab4c1df8f5a2ac5134336-webp.webp" alt="Saúl" class="dev-avatar" onerror="this.src='https://placehold.co/100/111/fff?text=💻'">
-                <div class="dev-meta">
-                    <div class="dev-name">Saúl Torres</div>
-                    <div class="dev-role">💻 Core Developer & UI Engineer</div>
+                <div class="dev-card">
+                    <img src="https://i.ibb.co/SwJy9NMj/86b9d825198ab4c1df8f5a2ac5134336-webp.webp" alt="Saúl" class="dev-avatar" onerror="this.src='https://placehold.co/100/111/fff?text=💻'">
+                    <div class="dev-meta">
+                        <div class="dev-name">Saúl Torres</div>
+                        <div class="dev-role">💻 Core Developer & UI Engineer</div>
+                    </div>
+                    <button class="dev-github-btn" onclick="window.open('https://github.com/usuario_saul', '_blank')">
+                        <i class="fa-brands fa-github"></i>
+                    </button>
                 </div>
-                <button class="dev-github-btn" onclick="window.open('https://github.com/usuario_saul', '_blank')">
-                    <i class="fa-brands fa-github"></i>
-                </button>
-            </div>
 
-            <div class="dev-card">
-                <img src="https://i.ibb.co/HD248CJG/85bef544e17c77625b6185cc0ef2dc91-webp.webp" alt="Lizbeth" class="dev-avatar" onerror="this.src='https://placehold.co/100/111/fff?text=🎨'">
-                <div class="dev-meta">
-                    <div class="dev-name">Lizbeth</div>
-                    <div class="dev-role">🎨 UI/UX Creative Designer</div>
+                <div class="dev-card">
+                    <img src="https://i.ibb.co/HD248CJG/85bef544e17c77625b6185cc0ef2dc91-webp.webp" alt="Lizbeth" class="dev-avatar" onerror="this.src='https://placehold.co/100/111/fff?text=🎨'">
+                    <div class="dev-meta">
+                        <div class="dev-name">Lizbeth</div>
+                        <div class="dev-role">🎨 UI/UX Creative Designer</div>
+                    </div>
+                    <button class="dev-github-btn" onclick="window.open('https://github.com/usuario_lizbeth', '_blank')">
+                        <i class="fa-brands fa-github"></i>
+                    </button>
                 </div>
-                <button class="dev-github-btn" onclick="window.open('https://github.com/usuario_lizbeth', '_blank')">
-                    <i class="fa-brands fa-github"></i>
-                </button>
             </div>
-        </div>
 
-        <div class="config-section-title" style="padding-left: 20px; margin-top: 15px;">Inspiración del Proyecto</div>
-<div class="dev-container">
-    <div class="dev-card" style="background: rgba(255, 255, 255, 0.02); border-style: dashed;">
-        <img src="https://avatars.githubusercontent.com/u/107134739?v=4" alt="koiverse" class="dev-avatar" onerror="this.src='https://placehold.co/100/111/fff?text=💿'">
-        <div class="dev-meta">
-            <div class="dev-name">koiverse</div>
-            <div class="dev-role">💿 Creator & developer of ArchiveTune</div>
-        </div>
-        <button class="dev-github-btn" onclick="window.open('https://github.com/koiverse', '_blank')" style="opacity: 0.8;">
-            <i class="fa-brands fa-github"></i>
-        </button>
-    </div>
-</div>
-
-        <div style="text-align: center; margin-top: 25px; padding: 0 16px;">
-            <div style="font-size: 11px; color: var(--text-muted); text-transform: uppercase; letter-spacing: 1px; margin-bottom: 8px;">Soporte Técnico Especial</div>
-            <div style="display: inline-flex; align-items: center; gap: 8px; background: #0c0c0c; padding: 6px 14px; border-radius: 20px; border: 1px solid var(--border-color);">
-                <i class="fa-solid fa-robot" style="font-size: 12px; color: var(--text-muted);"></i>
-                <span style="font-size: 12px; color: var(--text-main); font-weight: 500;">Gemini AI</span>
-                <span style="font-size: 12px; color: var(--text-muted);">• Tu compa de código (Copiloto)</span>
+            <div class="config-section-title" style="padding-left: 20px; margin-top: 15px;">Inspiración del Proyecto</div>
+            <div class="dev-container">
+                <div class="dev-card" style="background: rgba(255, 255, 255, 0.02); border-style: dashed;">
+                    <img src="https://avatars.githubusercontent.com/u/107134739?v=4" alt="koiverse" class="dev-avatar" onerror="this.src='https://placehold.co/100/111/fff?text=💿'">
+                    <div class="dev-meta">
+                        <div class="dev-name">koiverse</div>
+                        <div class="dev-role">💿 Creator & developer of ArchiveTune</div>
+                    </div>
+                    <button class="dev-github-btn" onclick="window.open('https://github.com/koiverse', '_blank')" style="opacity: 0.8;">
+                        <i class="fa-brands fa-github"></i>
+                    </button>
+                </div>
             </div>
-        </div>
 
-        <div style="padding: 30px 16px 20px 16px; text-align: center; font-size: 11px; color: var(--text-muted); line-height: 1.6;">
-            Created by Axel • Not associated with YouTube<br>
-            Diseñado con pasión para ofrecer una experiencia musical libre. Hecho en México. 🇲🇽
+            <div style="text-align: center; margin-top: 25px; padding: 0 16px;">
+                <div style="font-size: 11px; color: var(--text-muted); text-transform: uppercase; letter-spacing: 1px; margin-bottom: 8px;">Soporte Técnico Especial</div>
+                <div style="display: inline-flex; align-items: center; gap: 8px; background: #0c0c0c; padding: 6px 14px; border-radius: 20px; border: 1px solid var(--border-color);">
+                    <i class="fa-solid fa-robot" style="font-size: 12px; color: var(--text-muted);"></i>
+                    <span style="font-size: 12px; color: var(--text-main); font-weight: 500;">Gemini AI</span>
+                    <span style="font-size: 12px; color: var(--text-muted);">• Tu compa de código (Copiloto)</span>
+                </div>
+            </div>
+
+            <div style="padding: 30px 16px 20px 16px; text-align: center; font-size: 11px; color: var(--text-muted); line-height: 1.6;">
+                Created by Axel • Not associated with YouTube<br>
+                Diseñado con pasión para ofrecer una experiencia musical libre. Hecho en México. 🇲🇽
+            </div>
         </div>
     </div>
-</div>
 
-    <nav class="nav-bar">
+        <div class="player-bar" id="playerBar" style="display: none; position: fixed; bottom: 82px; left: 10px; right: 10px; z-index: 99999; border-radius: 12px;">
+        <img class="player-thumb" id="pThumb" src="" alt="cover">
+        <div class="player-info" onclick="abrirFullPlayer()">
+            <div class="player-title" id="pTitle">Título</div>
+            <div class="player-artist" id="pArtist">Artista</div>
+        </div>
+        <button class="play-btn" id="pBtn" onclick="togglePlaySimulado()"><i class="fa-solid fa-play"></i></button>
+    </div>
+
+    <div class="full-player" id="fullPlayer">
+
+    <div class="full-player-blur-bg" id="playerBlurBg"></div>
+
+    <button class="close-player-btn" onclick="cerrarFullPlayer()">
+        <i class="fa-solid fa-chevron-down"></i>
+    </button>
+
+    <div class="full-player-content">
+            <img class="full-player-cover" id="fpThumb" src="" alt="cover">
+
+            <div class="full-player-meta">
+                <div class="full-player-title" id="fpTitle">Título de la Canción</div>
+                <div class="full-player-artist" id="fpArtist">Artista de la rola</div>
+            </div>
+
+            <div class="progress-container">
+                <div class="progress-bar" id="realProgressBar">
+                    <div class="progress-current" style="width: 0%;"></div>
+                </div>
+                <div class="progress-time">
+                    <span id="timeCurrent">0:00</span>
+                    <span id="timeTotal">0:00</span>
+                </div>
+            </div>
+
+            <div class="full-player-controls">
+                <button class="ctrl-btn text-muted"><i class="fa-solid fa-shuffle"></i></button>
+                <button class="ctrl-btn prev-next" onclick="saltarAnterior()"><i class="fa-solid fa-backward-step"></i></button>
+                <button class="ctrl-btn-play" id="fpBtn" onclick="togglePlaySimulado()"><i class="fa-solid fa-play"></i></button>
+                <button class="ctrl-btn prev-next" onclick="saltarSiguiente()"><i class="fa-solid fa-forward-step"></i></button>
+                <button class="ctrl-btn text-muted"><i class="fa-solid fa-repeat"></i></button>
+            </div>
+        </div>
+    </div>
+
+    <nav class="nav-bar" style="z-index: 99999;">
         <div class="nav-item active" id="tab-inicio" onclick="cambiarPestaña('inicio')">
             <i class="fa-solid fa-house nav-icon"></i>
             <span class="nav-label">Inicio</span>
@@ -385,7 +387,7 @@
         </div>
     </nav>                                                    
 
-        <script>
+    <script>
         // --- 📊 VARIABLES GLOBALES DE ESTADO ---
         var duracionCancionActual = 0;
         var browseIdArtistaActual = "";
@@ -404,7 +406,7 @@
             return min + ":" + (sec < 10 ? "0" : "") + sec;
         }
 
-        // --- 🗺️ NAVEGACIÓN Y VISTAS ---
+           // --- 🗺️ NAVEGACIÓN Y VISTAS ---
         function cambiarPestaña(vista) {
             document.querySelectorAll('.app-view').forEach(v => v.classList.remove('active'));
             document.querySelectorAll('.nav-item').forEach(t => t.classList.remove('active'));
@@ -413,8 +415,30 @@
             document.getElementById(`tab-${vista}`).classList.add('active');
         }
 
-        function abrirFullPlayer() { document.getElementById('fullPlayer').classList.add('open'); }
-        function cerrarFullPlayer() { document.getElementById('fullPlayer').classList.remove('open'); }
+        function abrirFullPlayer() { 
+            document.getElementById('fullPlayer').classList.add('open'); 
+            
+            // Ocultamos el mini reproductor
+            var playerBar = document.getElementById('playerBar');
+            if (playerBar) playerBar.style.display = "none";
+
+            // ¡AQUÍ ESTÁ! Apagamos por completo el menú inferior para que no se encime
+            var navBar = document.querySelector('.nav-bar');
+            if (navBar) navBar.style.display = "none";
+        }
+
+        function cerrarFullPlayer() { 
+            document.getElementById('fullPlayer').classList.remove('open'); 
+            
+            // Regresamos el mini reproductor a la vida
+            var playerBar = document.getElementById('playerBar');
+            if (playerBar) playerBar.style.display = 'flex';
+
+            // ¡AQUÍ ESTÁ! Regresamos el menú inferior a la vida al bajar el reproductor
+            var navBar = document.querySelector('.nav-bar');
+            if (navBar) navBar.style.display = 'flex';
+        }
+
         function abrirConfigPanel() { document.getElementById('configPanel').classList.add('open'); }
         function cerrarConfigPanel() { document.getElementById('configPanel').classList.remove('open'); }
         function cerrarArtistPanel() { document.getElementById('artistPanel').classList.remove('open'); }
@@ -431,7 +455,6 @@
                 window.event.currentTarget.classList.add('active');
             }
         }
-
         // --- 📡 MOTOR DE BÚSQUEDA ---
         function dispararBusquedaReal() {
             var query = document.getElementById('queryInput').value;
@@ -572,9 +595,13 @@
                     abrirFullPlayer();
                 };
 
-                document.getElementById('fpTitle').innerText = track.title;
+                                document.getElementById('fpTitle').innerText = track.title;
                 if(track.thumbnail && track.thumbnail.trim() !== "") {
                     document.getElementById('fpThumb').src = track.thumbnail;
+                    
+                    // Separado en su propio renglón para que se vea pro
+                    var blurBg = document.getElementById('playerBlurBg');
+                    if(blurBg) { blurBg.style.backgroundImage = "url('" + track.thumbnail + "')"; }
                 }
                 
                 var fpArtistContainer = document.getElementById('fpArtist');
@@ -704,16 +731,17 @@
                         div.className = 'track-item';
                         div.style.cursor = 'pointer';
                         
-                        var trackArtistId = track.artistBrowseId || data.id || document.getElementById('apName').innerText;
+                        var nombreArtistaReal = track.artist || data.name || document.getElementById('apName').innerText;
+                        var trackArtistId = track.artistBrowseId || data.id || "";
 
                         div.onclick = function() { 
-                            lanzarReproduccionNativa(track.title, track.artist, track.thumbnail, track.id, trackArtistId); 
+                            lanzarReproduccionNativa(track.title, nombreArtistaReal, track.thumbnail, track.id, trackArtistId); 
                         };
                         div.innerHTML = `
                             <img src="${track.thumbnail}" style="width:44px; height:44px; border-radius:6px; margin-right:12px; object-fit:cover;" onerror="this.src='https://placehold.co/50x50/111/fff?text=Music'">
                             <div class="track-info">
                                 <div class="track-title" style="font-size:14px; font-weight:500;">${track.title}</div>
-                                <div class="track-artist" style="font-size:12px; color:var(--text-muted);">${track.artist}</div>
+                                <div class="track-artist" style="font-size:12px; color:var(--text-muted);">${nombreArtistaReal}</div>
                             </div>
                             <i class="fa-solid fa-play" style="color:var(--text-muted); font-size:11px; margin-right:10px;"></i>
                         `;
@@ -796,5 +824,6 @@
             container.appendChild(div);
         }
     </script>
+
 </body>
 </html>
