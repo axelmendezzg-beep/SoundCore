@@ -184,7 +184,8 @@ button:active {
 /* --- BARRA DEL REPRODUCTOR (MINI PLAYER MEJORADO) --- */
 .player-bar { 
     position: fixed; 
-    bottom: 82px; 
+    /* Lo subimos para que libre el menú inferior en cualquier WebView */
+    bottom: 96px; 
     left: 12px; right: 12px; 
     background: rgba(12, 12, 12, 0.82); 
     backdrop-filter: blur(25px); 
@@ -200,6 +201,7 @@ button:active {
     will-change: transform;
     animation: slideUp 0.35s var(--android-curve) forwards;
 }
+
 .player-bar:active {
     background: rgba(20, 20, 20, 0.88);
 }
@@ -632,13 +634,13 @@ button:active {
 }
 .ctrl-btn-play i { color: #000; }
 
-/* ================= PANEL DE ARTISTA (DESLIZAMIENTO LATERAL GPU) ================= */
+/* ================= PANEL DE ARTISTA (PREMIUM RE-DISEÑADO) ================= */
 .artist-profile-panel {
     position: fixed;
     top: 0; left: 0; right: 0; bottom: 0;
-    background: #050505;
+    background: #000000;
     z-index: 150; 
-    transform: translate3d(100%, 0, 0); /* 🛠️ Desplazamiento lateral por GPU */
+    transform: translate3d(100%, 0, 0); /* Desplazamiento lateral suave */
     will-change: transform;
     transition: transform 0.35s cubic-bezier(0.1, 0.76, 0.55, 0.94);
     display: flex;
@@ -648,53 +650,111 @@ button:active {
     transform: translate3d(0, 0, 0);
 }
 
+/* El header transparente que bajamos para Android */
 .artist-panel-header {
     position: absolute;
     top: 0; left: 0; right: 0;
-    height: 60px; display: flex; align-items: center;
-    padding: 0 16px; z-index: 10;
+    padding-top: 35px; /* Altura corregida para WebView */
+    height: auto; 
+    display: flex; 
+    align-items: center;
+    padding-left: 16px; 
+    padding-right: 16px;
+    z-index: 10;
 }
 
 .back-panel-btn {
-    background: rgba(0, 0, 0, 0.4);
-    color: var(--text-main); border: none;
-    width: 38px; height: 38px; border-radius: 50%;
+    background: rgba(0, 0, 0, 0.5); /* Más oscuro para que se vea sobre cualquier banner */
+    color: var(--text-main); 
+    border: none;
+    width: 40px; height: 40px; border-radius: 50%;
     display: flex; align-items: center; justify-content: center;
-    font-size: 16px; cursor: pointer; backdrop-filter: blur(4px);
-    -webkit-backdrop-filter: blur(4px);
+    font-size: 16px; cursor: pointer; 
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+    border: 1px solid rgba(255,255,255,0.05);
 }
 
 .artist-panel-content {
-    flex: 1; overflow-y: auto; padding-bottom: 100px;
-    -webkit-overflow-scrolling: touch; /* Inercia nativa móvil */
+    flex: 1; 
+    overflow-y: auto; 
+    padding-bottom: 120px;
+    -webkit-overflow-scrolling: touch;
 }
 
+/* Banner Premium con efecto de profundidad */
 .artist-banner {
-    width: 100%; height: 260px;
-    background-size: cover; background-position: center;
-    position: relative; background-color: #0a0a0a;
+    width: 100%; 
+    height: 280px;
+    background-size: cover; 
+    background-position: center;
+    position: relative; 
+    background-color: #0c0c0c;
 }
 
+/* Degradado agresivo para que el nombre del artista se lea perfecto */
 .artist-banner-overlay {
     position: absolute;
     top: 0; left: 0; right: 0; bottom: 0;
-    background: linear-gradient(to bottom, transparent 30%, #050505 100%);
-    display: flex; align-items: flex-end; padding: 20px 16px;
+    background: linear-gradient(to bottom, rgba(0,0,0,0.1) 0%, rgba(0,0,0,0.4) 60%, #000000 100%);
+    display: flex; 
+    align-items: flex-end; 
+    padding: 24px 16px;
 }
 
-.artist-panel-name { font-size: 30px; font-weight: 900; color: var(--text-main); letter-spacing: -0.5px; margin: 0; }
-.artist-action-bar { display: flex; justify-content: space-between; align-items: center; padding: 12px 16px; }
-.artist-stats { font-size: 13px; color: var(--text-muted); }
-.artist-stats span { color: var(--text-main); font-weight: 600; }
+.artist-panel-name { 
+    font-size: 32px; 
+    font-weight: 900; 
+    color: var(--text-main); 
+    letter-spacing: -0.5px; 
+    margin: 0;
+    text-shadow: 0 2px 10px rgba(0,0,0,0.5); /* Seguridad extra de lectura */
+}
 
+/* Barra de acciones (Seguidores + Botón Play Premium) */
+.artist-action-bar { 
+    display: flex; 
+    justify-content: space-between; 
+    align-items: center; 
+    padding: 16px; 
+    margin-top: -10px; /* Lo junta estéticamente con el banner */
+}
+.artist-stats { 
+    font-size: 13px; 
+    color: var(--text-muted); 
+}
+.artist-stats span { 
+    color: var(--text-main); 
+    font-weight: 600; 
+}
+
+/* El botón circular de Play estilo Spotify */
 .artist-play-btn {
-    background: var(--text-main); color: #000; border: none;
-    width: 50px; height: 50px; border-radius: 50%;
-    font-size: 18px; display: flex; align-items: center; justify-content: center;
+    background: var(--text-main); 
+    color: #000; 
+    border: none;
+    width: 52px; height: 52px; 
+    border-radius: 50%;
+    font-size: 18px; 
+    display: flex; 
+    align-items: center; 
+    justify-content: center;
     cursor: pointer;
+    box-shadow: 0 4px 14px rgba(255,255,255,0.15);
+    transition: transform 0.1s ease;
 }
-.artist-play-btn:active { transform: scale(0.92); }
-.artist-play-btn i { color: #000; margin-left: 2px; }
+.artist-play-btn:active { 
+    transform: scale(0.92); 
+}
+.artist-play-btn i { 
+    color: #000; 
+    margin-left: 2px; 
+}
+
+/* Contenedor para la lista de canciones dentro del perfil */
+.artist-tracks-section {
+    padding: 0 16px;
+}
 
 /* ================= PANEL DE CONFIGURACIÓN ================= */
 .config-panel {
