@@ -110,9 +110,7 @@ class SoundCoreActivity : ComponentActivity() {
                             val artist = metadata.artist?.toString()?.replace("\"", "\\\"") ?: "Artista Desconocido"
                             val thumbnail = metadata.artworkUri?.toString() ?: ""
                             
-                            // 🛠️ BLINDAJE AQUÍ: Pasamos el string del artista como browseId por defecto de la rola nativa,
-                            // evitando meter el ID de video corrupto de YouTube (como JseJETvMtHY) en el flujo de vistas.
-                            val artistBrowseId = artist
+                            val artistBrowseId = mediaId ?: artist
 
                             val json = """
                                 {
@@ -244,15 +242,32 @@ class SoundCoreActivity : ComponentActivity() {
 
                 YouTube.artist(cleanArtistId).onSuccess { artistPage ->
                     try {
-                        val name = artistPage.javaClass.getMethod("getArtist").invoke(artistPage)
-                        val title = name.javaClass.getMethod("getTitle").invoke(name) as String
-                        val thumb = name.javaClass.getMethod("getThumbnail").invoke(name) as? String ?: ""
+                        val artistItem = artistPage.artist
+                        val title = artistItem.title
+                        val thumb = artistItem.thumbnail ?: ""
                         
-                        YouTube.search(title, YouTube.SearchFilter.FILTER_SONG).onSuccess { songResult ->
-                            sendManualPayload(title, thumb, songResult.items.filterIsInstance<SongItem>(), emptyList())
-                        }.onFailure {
+                        val sections = artistPage.sections
+                        
+                        val songsSection = sections.firstOrNull { section ->
+                            val lowerTitle = section.title.lowercase()
+                            lowerTitle.contains("canción") || lowerTitle.contains("canciones") || 
+                            lowerTitle.contains("song") || lowerTitle.contains("top")
+                        }
+
+                        val albumsSection = sections.firstOrNull { section ->
+                            val lowerTitle = section.title.lowercase()
+                            lowerTitle.contains("álbum") || lowerTitle.contains("album") || lowerTitle.contains("discografía")
+                        }
+
+                        val officialSongs = songsSection?.items?.filterIsInstance<SongItem>() ?: emptyList()
+                        val officialAlbums = albumsSection?.items?.filterIsInstance<AlbumItem>() ?: emptyList()
+
+                        if (officialSongs.isNotEmpty()) {
+                            sendManualPayload(title, thumb, officialSongs, officialAlbums)
+                        } else {
                             executeFallbackSearch(title)
                         }
+
                     } catch (e: Exception) {
                         executeFallbackSearch(cleanArtistId)
                     }
@@ -341,3 +356,4 @@ class SoundCoreActivity : ComponentActivity() {
         }
     }
 }
+
