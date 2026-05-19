@@ -110,8 +110,6 @@ class SoundCoreActivity : ComponentActivity() {
                             val artist = metadata.artist?.toString()?.replace("\"", "\\\"") ?: "Artista Desconocido"
                             val thumbnail = metadata.artworkUri?.toString() ?: ""
                             
-                            // Aquí es donde a veces el mediaId pisaba el id de artista.
-                            // Le pasamos el nombre del artista como salvavidas si no es un ID válido.
                             val artistBrowseId = if (mediaId != null && (mediaId.startsWith("UC") || mediaId.startsWith("FM"))) mediaId else artist
 
                             val json = """
@@ -237,8 +235,6 @@ class SoundCoreActivity : ComponentActivity() {
             }
 
             activityScope.launch(Dispatchers.IO) {
-                // DETECTOR DE ID DE VIDEO CONTAMINADO: 
-                // Si mide 11 letras o no empieza con la estructura de canales de YT, es un videoId intruso.
                 if (cleanArtistId.length == 11 || (!cleanArtistId.startsWith("UC") && !cleanArtistId.startsWith("FM"))) {
                     executeFallbackSearch(cleanArtistId)
                     return@launch
@@ -252,23 +248,37 @@ class SoundCoreActivity : ComponentActivity() {
                         
                         val sections = artistPage.sections
                         
-                        // Buscador de canciones populares flexible (Inglés / Español)
+                        // 1. Filtrar estrictamente canciones populares
                         val songsSection = sections.firstOrNull { section ->
                             val lowerTitle = section.title.lowercase()
-                            lowerTitle.contains("canción") || lowerTitle.contains("canciones") || 
-                            lowerTitle.contains("song") || lowerTitle.contains("top") || lowerTitle.contains("hits")
+                            (lowerTitle.contains("canción") || lowerTitle.contains("canciones") || 
+                             lowerTitle.contains("song") || lowerTitle.contains("top") || lowerTitle.contains("hits")) &&
+                            !lowerTitle.contains("relacionado") && !lowerTitle.contains("similar") && !lowerTitle.contains("radio")
                         }
 
-                        // Buscador de álbumes flexible (Soporta album, albums, sencillos, singles, discography)
+                        // 2. Extraer Álbumes tradicionales
                         val albumsSection = sections.firstOrNull { section ->
                             val lowerTitle = section.title.lowercase()
-                            lowerTitle.contains("álbum") || lowerTitle.contains("album") || 
-                            lowerTitle.contains("disc") || lowerTitle.contains("single") || lowerTitle.contains("sencillo")
+                            lowerTitle.contains("álbum") || lowerTitle.contains("album") || lowerTitle.contains("discografía") || lowerTitle.contains("discography")
                         }
 
-                        val officialSongs = songsSection?.items?.filterIsInstance<SongItem>() ?: emptyList()
-                        val officialAlbums = albumsSection?.items?.filterIsInstance<AlbumItem>() ?: emptyList()
+                        // 3. Extraer Sencillos / Singles independientes
+                        val singlesSection = sections.firstOrNull { section ->
+                            val lowerTitle = section.title.lowercase()
+                            lowerTitle.contains("single") || lowerTitle.contains("sencillo")
+                        }
 
+                        // Filtrado estricto anti-contaminación por texto de artista
+                        val rawSongs = songsSection?.items?.filterIsInstance<SongItem>() ?: emptyList()
+                        val officialSongs = rawSongs.filter { song ->
+                            song.artists.any { it.name.lowercase().contains(title.lowercase()) || title.lowercase().contains(it.name.lowercase()) }
+                        }
+
+                        // Combinar listas de lanzamientos (Si no hay álbumes, entran singles; si hay ambos, se fusionan)
+                        val officialAlbums = (albumsSection?.items?.filterIsInstance<AlbumItem>() ?: emptyList()) + 
+                                             (singlesSection?.items?.filterIsInstance<AlbumItem>() ?: emptyList())
+
+                        // Si tras el filtro estricto nos quedamos sin canciones, usamos el motor secundario
                         if (officialSongs.isNotEmpty()) {
                             sendManualPayload(title, thumb, officialSongs, officialAlbums)
                         } else {
@@ -289,8 +299,6 @@ class SoundCoreActivity : ComponentActivity() {
         }
 
         private suspend fun executeFallbackSearch(corruptId: String) {
-            // Si el corruptId es un videoId de 11 letras, no nos sirve para buscar texto.
-            // Le pedimos auxilio al reproductor para sacar el nombre real del artista actual.
             val queryTarget = if (corruptId.trim().isNotEmpty() && corruptId.length != 11) {
                 corruptId
             } else {
@@ -311,17 +319,21 @@ class SoundCoreActivity : ComponentActivity() {
                 
                 YouTube.artist(legitArtist?.id ?: "").onSuccess { fallbackPage ->
                     val sections = fallbackPage.sections
+                    
                     val songsSection = sections.firstOrNull { s -> 
                         val l = s.title.lowercase()
-                        l.contains("can") || l.contains("song") || l.contains("top") 
+                        (l.contains("can") || l.contains("song") || l.contains("top")) && !l.contains("radio") && !l.contains("simil")
                     }
-                    val albumsSection = sections.firstOrNull { s -> 
-                        val l = s.title.lowercase()
-                        l.contains("alb") || l.contains("disc") || l.contains("sing") 
+                    val albumsSection = sections.firstOrNull { s -> s.title.lowercase().contains("alb") || s.title.lowercase().contains("disc") }
+                    val singlesSection = sections.firstOrNull { s -> s.title.lowercase().contains("sing") || s.title.lowercase().contains("senc") }
+                    
+                    val rawSongs = songsSection?.items?.filterIsInstance<SongItem>() ?: emptyList()
+                    val fSongs = rawSongs.filter { song ->
+                        song.artists.any { it.name.lowercase().contains(trackName.lowercase()) || trackName.lowercase().contains(it.name.lowercase()) }
                     }
                     
-                    val fSongs = songsSection?.items?.filterIsInstance<SongItem>() ?: emptyList()
-                    val fAlbums = albumsSection?.items?.filterIsInstance<AlbumItem>() ?: emptyList()
+                    val fAlbums = (albumsSection?.items?.filterIsInstance<AlbumItem>() ?: emptyList()) + 
+                                  (singlesSection?.items?.filterIsInstance<AlbumItem>() ?: emptyList())
                     
                     if (fSongs.isNotEmpty()) {
                         sendManualPayload(trackName, trackPhoto, fSongs, fAlbums)
@@ -338,7 +350,11 @@ class SoundCoreActivity : ComponentActivity() {
 
         private suspend fun executeSongSearchFallback(query: String, trackName: String, trackPhoto: String) {
             YouTube.search(query, YouTube.SearchFilter.FILTER_SONG).onSuccess { songResult ->
-                sendManualPayload(trackName, trackPhoto, songResult.items.filterIsInstance<SongItem>(), emptyList())
+                val rawSongs = songResult.items.filterIsInstance<SongItem>()
+                val cleanSongs = rawSongs.filter { song ->
+                    song.artists.any { it.name.lowercase().contains(trackName.lowercase()) || trackName.lowercase().contains(it.name.lowercase()) }
+                }
+                sendManualPayload(trackName, trackPhoto, cleanSongs.ifEmpty { rawSongs }, emptyList())
             }.onFailure { err ->
                 triggerHtmlError(err.message)
             }
@@ -362,7 +378,7 @@ class SoundCoreActivity : ComponentActivity() {
             tracksJsonBuilder.append("]")
 
             val albumsJsonBuilder = StringBuilder("[")
-            albums.forEachIndexed { index, album ->
+            albums.distinctBy { it.title }.forEachIndexed { index, album ->
                 val aTitle = album.title.replace("\"", "\\\"")
                 albumsJsonBuilder.append("{")
                     .append("\"title\":\"$aTitle\",")
