@@ -228,7 +228,7 @@ class SoundCoreActivity : ComponentActivity() {
             val rawId = browseId.trim()
             if (rawId.isEmpty()) return
             
-            var cleanArtistId = if (rawId.contains(",") && (rawId.startsWith("UC") || rawId.startsWith("FM"))) {
+            val cleanArtistId = if (rawId.contains(",") && (rawId.startsWith("UC") || rawId.startsWith("FM"))) {
                 rawId.split(",").firstOrNull { it.trim().isNotEmpty() }?.trim() ?: rawId
             } else {
                 rawId
@@ -245,10 +245,9 @@ class SoundCoreActivity : ComponentActivity() {
                         val artistItem = artistPage.artist
                         val title = artistItem.title
                         val thumb = artistItem.thumbnail ?: ""
-                        
                         val sections = artistPage.sections
                         
-                        // 1. Filtrar estrictamente canciones populares
+                        // Capturar canciones populares limpias
                         val songsSection = sections.firstOrNull { section ->
                             val lowerTitle = section.title.lowercase()
                             (lowerTitle.contains("canción") || lowerTitle.contains("canciones") || 
@@ -256,31 +255,31 @@ class SoundCoreActivity : ComponentActivity() {
                             !lowerTitle.contains("relacionado") && !lowerTitle.contains("similar") && !lowerTitle.contains("radio")
                         }
 
-                        // 2. Extraer Álbumes tradicionales
+                        // Capturar sección de Álbumes
                         val albumsSection = sections.firstOrNull { section ->
                             val lowerTitle = section.title.lowercase()
-                            lowerTitle.contains("álbum") || lowerTitle.contains("album") || lowerTitle.contains("discografía") || lowerTitle.contains("discography")
+                            (lowerTitle.contains("álbum") || lowerTitle.contains("album")) && !lowerTitle.contains("single") && !lowerTitle.contains("sencillo")
                         }
 
-                        // 3. Extraer Sencillos / Singles independientes
+                        // Capturar sección de Sencillos/Singles
                         val singlesSection = sections.firstOrNull { section ->
                             val lowerTitle = section.title.lowercase()
                             lowerTitle.contains("single") || lowerTitle.contains("sencillo")
                         }
 
-                        // Filtrado estricto anti-contaminación por texto de artista
                         val rawSongs = songsSection?.items?.filterIsInstance<SongItem>() ?: emptyList()
-                        val officialSongs = rawSongs.filter { song ->
+                        
+                        // Para artistas globales grandotes como Ariana Grande, suavizamos el filtro estricto si vacía la lista
+                        var officialSongs = rawSongs.filter { song ->
                             song.artists.any { it.name.lowercase().contains(title.lowercase()) || title.lowercase().contains(it.name.lowercase()) }
                         }
+                        if (officialSongs.isEmpty()) officialSongs = rawSongs
 
-                        // Combinar listas de lanzamientos (Si no hay álbumes, entran singles; si hay ambos, se fusionan)
-                        val officialAlbums = (albumsSection?.items?.filterIsInstance<AlbumItem>() ?: emptyList()) + 
-                                             (singlesSection?.items?.filterIsInstance<AlbumItem>() ?: emptyList())
+                        val officialAlbums = albumsSection?.items?.filterIsInstance<AlbumItem>() ?: emptyList()
+                        val officialSingles = singlesSection?.items?.filterIsInstance<AlbumItem>() ?: emptyList()
 
-                        // Si tras el filtro estricto nos quedamos sin canciones, usamos el motor secundario
                         if (officialSongs.isNotEmpty()) {
-                            sendManualPayload(title, thumb, officialSongs, officialAlbums)
+                            sendManualPayload(title, thumb, officialSongs, officialAlbums, officialSingles)
                         } else {
                             executeFallbackSearch(title)
                         }
@@ -324,19 +323,20 @@ class SoundCoreActivity : ComponentActivity() {
                         val l = s.title.lowercase()
                         (l.contains("can") || l.contains("song") || l.contains("top")) && !l.contains("radio") && !l.contains("simil")
                     }
-                    val albumsSection = sections.firstOrNull { s -> s.title.lowercase().contains("alb") || s.title.lowercase().contains("disc") }
+                    val albumsSection = sections.firstOrNull { s -> (s.title.lowercase().contains("alb") || s.title.lowercase().contains("disc")) && !s.title.lowercase().contains("sing") && !s.title.lowercase().contains("senc") }
                     val singlesSection = sections.firstOrNull { s -> s.title.lowercase().contains("sing") || s.title.lowercase().contains("senc") }
                     
                     val rawSongs = songsSection?.items?.filterIsInstance<SongItem>() ?: emptyList()
-                    val fSongs = rawSongs.filter { song ->
+                    var fSongs = rawSongs.filter { song ->
                         song.artists.any { it.name.lowercase().contains(trackName.lowercase()) || trackName.lowercase().contains(it.name.lowercase()) }
                     }
+                    if (fSongs.isEmpty()) fSongs = rawSongs
                     
-                    val fAlbums = (albumsSection?.items?.filterIsInstance<AlbumItem>() ?: emptyList()) + 
-                                  (singlesSection?.items?.filterIsInstance<AlbumItem>() ?: emptyList())
+                    val fAlbums = albumsSection?.items?.filterIsInstance<AlbumItem>() ?: emptyList()
+                    val fSingles = singlesSection?.items?.filterIsInstance<AlbumItem>() ?: emptyList()
                     
                     if (fSongs.isNotEmpty()) {
-                        sendManualPayload(trackName, trackPhoto, fSongs, fAlbums)
+                        sendManualPayload(trackName, trackPhoto, fSongs, fAlbums, fSingles)
                     } else {
                         executeSongSearchFallback(queryTarget, trackName, trackPhoto)
                     }
@@ -351,16 +351,13 @@ class SoundCoreActivity : ComponentActivity() {
         private suspend fun executeSongSearchFallback(query: String, trackName: String, trackPhoto: String) {
             YouTube.search(query, YouTube.SearchFilter.FILTER_SONG).onSuccess { songResult ->
                 val rawSongs = songResult.items.filterIsInstance<SongItem>()
-                val cleanSongs = rawSongs.filter { song ->
-                    song.artists.any { it.name.lowercase().contains(trackName.lowercase()) || trackName.lowercase().contains(it.name.lowercase()) }
-                }
-                sendManualPayload(trackName, trackPhoto, cleanSongs.ifEmpty { rawSongs }, emptyList())
+                sendManualPayload(trackName, trackPhoto, rawSongs, emptyList(), emptyList())
             }.onFailure { err ->
                 triggerHtmlError(err.message)
             }
         }
 
-        private suspend fun sendManualPayload(name: String, thumbnail: String, songs: List<SongItem>, albums: List<AlbumItem>) {
+        private suspend fun sendManualPayload(name: String, thumbnail: String, songs: List<SongItem>, albums: List<AlbumItem>, singles: List<AlbumItem>) {
             val tracksJsonBuilder = StringBuilder("[")
             songs.take(20).forEachIndexed { index, song ->
                 val tTitle = song.title.replace("\"", "\\\"")
@@ -377,19 +374,35 @@ class SoundCoreActivity : ComponentActivity() {
             }
             tracksJsonBuilder.append("]")
 
+            // Construcción ultra limpia de Álbumes (SIN coma huérfana al final)
             val albumsJsonBuilder = StringBuilder("[")
-            albums.distinctBy { it.title }.forEachIndexed { index, album ->
+            val cleanAlbums = albums.distinctBy { it.title }
+            cleanAlbums.forEachIndexed { index, album ->
                 val aTitle = album.title.replace("\"", "\\\"")
                 albumsJsonBuilder.append("{")
                     .append("\"title\":\"$aTitle\",")
                     .append("\"year\":\"${album.year ?: ""}\",")
                     .append("\"thumbnail\":\"${album.thumbnail ?: ""}\"")
                     .append("}")
-                if (index < albums.size - 1) albumsJsonBuilder.append(",")
+                if (index < cleanAlbums.size - 1) albumsJsonBuilder.append(",")
             }
             albumsJsonBuilder.append("]")
 
-            val finalJson = "{\"name\":\"${name.replace("\"", "\\\"")}\",\"thumbnail\":\"$thumbnail\",\"tracks\":$tracksJsonBuilder,\"albums\":$albumsJsonBuilder}"
+            // Construcción ultra limpia de Sencillos (SIN coma huérfana al final)
+            val singlesJsonBuilder = StringBuilder("[")
+            val cleanSingles = singles.distinctBy { it.title }
+            cleanSingles.forEachIndexed { index, single ->
+                val sTitle = single.title.replace("\"", "\\\"")
+                singlesJsonBuilder.append("{")
+                    .append("\"title\":\"$sTitle\",")
+                    .append("\"year\":\"${single.year ?: ""}\",")
+                    .append("\"thumbnail\":\"${single.thumbnail ?: ""}\"")
+                    .append("}")
+                if (index < cleanSingles.size - 1) singlesJsonBuilder.append(",")
+            }
+            singlesJsonBuilder.append("]")
+
+            val finalJson = "{\"name\":\"${name.replace("\"", "\\\"")}\",\"thumbnail\":\"$thumbnail\",\"tracks\":$tracksJsonBuilder,\"albums\":$albumsJsonBuilder,\"singles\":$singlesJsonBuilder}"
             val base64Json = Base64.encodeToString(finalJson.toByteArray(Charsets.UTF_8), Base64.NO_WRAP)
             
             withContext(Dispatchers.Main) {

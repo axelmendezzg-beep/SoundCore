@@ -665,8 +665,8 @@
             }
         }
 
-        // --- 🎤 SECCIÓN DE ARTISTAS ---
-        const infoArtistas = {
+// --- 🎤 SECCIÓN DE ARTISTAS ---
+const infoArtistas = {
     "Kanye West": { banner: "https://images.unsplash.com/photo-1611339555312-e607c8352fd7?q=80&w=600", listeners: "74,103,449" },
     "Bad Bunny": { banner: "https://images.unsplash.com/photo-1571330735066-03add575afe8?q=80&w=600", listeners: "69,541,200" },
     "Cartel de Santa": { banner: "https://images.unsplash.com/photo-1524368535928-5b5e00ddc76b?q=80&w=600", listeners: "12,310,450" }
@@ -724,6 +724,7 @@ function onArtistDetailsResultEncoded(base64Json) {
         
         var fragment = document.createDocumentFragment();
 
+        // 🎤 CANCIONES POPULARES
         if(data.tracks && data.tracks.length > 0) {
             data.tracks.forEach(function(track) {
                 var div = document.createElement('div');
@@ -753,16 +754,14 @@ function onArtistDetailsResultEncoded(base64Json) {
             fragment.appendChild(p);
         }
 
-        /* --- AQUÍ ENTRA LA FILA DE ÁLBUMES CON SCROLL LATERAL HORIZONTAL 🔥 --- */
+        // 💿 FILA 1: ÁLBUMES (Solo si existen en el JSON)
         if(data.albums && data.albums.length > 0) {
             var tituloAlbumes = document.createElement('div');
             tituloAlbumes.className = 'section-title';
-            // Ajustamos el padding lateral para que se alinee estéticamente con los tracks
             tituloAlbumes.style.cssText = 'padding: 0 16px; margin-top: 28px; margin-bottom: 12px;';
-            tituloAlbumes.innerText = 'Álbumes y Sencillos';
+            tituloAlbumes.innerText = 'Álbumes';
             fragment.appendChild(tituloAlbumes);
 
-            // Creamos el contenedor horizontal que definimos en tu CSS
             var scrollAlbumes = document.createElement('div');
             scrollAlbumes.className = 'albums-horizontal-scroll';
 
@@ -782,6 +781,33 @@ function onArtistDetailsResultEncoded(base64Json) {
             fragment.appendChild(scrollAlbumes);
         }
 
+        // 📻 FILA 2: SENCILLOS Y EPS (Solo si existen en el JSON)
+        if(data.singles && data.singles.length > 0) {
+            var tituloSingles = document.createElement('div');
+            tituloSingles.className = 'section-title';
+            tituloSingles.style.cssText = 'padding: 0 16px; margin-top: 24px; margin-bottom: 12px;';
+            tituloSingles.innerText = 'Sencillos y EPs';
+            fragment.appendChild(tituloSingles);
+
+            var scrollSingles = document.createElement('div');
+            scrollSingles.className = 'albums-horizontal-scroll';
+
+            data.singles.forEach(function(single) {
+                var card = document.createElement('div');
+                card.className = 'album-scroll-card';
+                card.onclick = function() {
+                    alert("Reproduciendo sencillo: " + single.title + " 📻");
+                };
+                card.innerHTML = `
+                    <img src="${single.thumbnail}" alt="cover" onerror="this.src='https://placehold.co/135x135/111/fff?text=Single'">
+                    <div class="card-title" style="font-size:13px; font-weight:500; margin-top:8px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${single.title}</div>
+                    <div class="card-artist" style="font-size:11px; color:var(--text-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${single.year ? single.year : 'Sencillo'}</div>
+                `;
+                scrollSingles.appendChild(card);
+            });
+            fragment.appendChild(scrollSingles);
+        }
+
         container.appendChild(fragment);
 
     } catch(e) {
@@ -799,7 +825,6 @@ function onArtistDetailsError(msg) {
             <p style='color:#ff5555; font-size:11px; margin-top:4px;'>Detalle: ${msg}</p>
         </div>`;
 }
-
 
         // --- 💾 SIMULACIÓN DE BIBLIOTECA ---
         function crearPlaylistSimulada() {
