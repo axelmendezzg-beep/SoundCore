@@ -228,15 +228,15 @@ class SoundCoreActivity : ComponentActivity() {
             val rawId = browseId.trim()
             if (rawId.isEmpty()) return
             
-            val cleanArtistId = if (rawId.contains(",") && (rawId.startsWith("UC") || rawId.startsWith("FM"))) {
-                rawId.split(",").firstOrNull { it.trim().isNotEmpty() }?.trim() ?: rawId
+            val cleanArtistId = if (rawId.contains(",")) {
+                rawId.split(",").map { it.trim() }.firstOrNull { it.startsWith("UC") || it.startsWith("FM") } ?: ""
             } else {
                 rawId
             }
 
             activityScope.launch(Dispatchers.IO) {
-                if (cleanArtistId.length == 11 || (!cleanArtistId.startsWith("UC") && !cleanArtistId.startsWith("FM"))) {
-                    executeFallbackSearch(cleanArtistId)
+                if (cleanArtistId.isEmpty() || (!cleanArtistId.startsWith("UC") && !cleanArtistId.startsWith("FM"))) {
+                    executeFallbackSearch(rawId)
                     return@launch
                 }
 
@@ -268,17 +268,26 @@ class SoundCoreActivity : ComponentActivity() {
                         }
 
                         val rawSongs = songsSection?.items?.filterIsInstance<SongItem>() ?: emptyList()
-                        
-                        // Para artistas globales grandotes como Ariana Grande, suavizamos el filtro estricto si vacía la lista
-                        var officialSongs = rawSongs.filter { song ->
-                            song.artists.any { it.name.lowercase().contains(title.lowercase()) || title.lowercase().contains(it.name.lowercase()) }
-                        }
-                        if (officialSongs.isEmpty()) officialSongs = rawSongs
-
                         val officialAlbums = albumsSection?.items?.filterIsInstance<AlbumItem>() ?: emptyList()
                         val officialSingles = singlesSection?.items?.filterIsInstance<AlbumItem>() ?: emptyList()
 
-                        if (officialSongs.isNotEmpty()) {
+                        // Filtrado estricto anti-mezclas de otros artistas
+                        var officialSongs = rawSongs.filter { song ->
+                            song.artists.any { it.name.lowercase().contains(title.lowercase()) || title.lowercase().contains(it.name.lowercase()) }
+                        }
+                        
+                        // Salvavidas para artistas pequeños (Miranda León/Omar): si "Canciones" viene vacío por la API, usamos sus sencillos
+                        if (officialSongs.isEmpty()) {
+                            if (officialSingles.isNotEmpty()) {
+                                officialSongs = officialSingles.map { 
+                                    SongItem(id = it.id, title = it.title, artists = listOf(ArtistItem(id = cleanArtistId, title = title)), thumbnail = it.thumbnail, duration = 0)
+                                }
+                            } else {
+                                officialSongs = rawSongs
+                            }
+                        }
+
+                        if (officialSongs.isNotEmpty() || officialAlbums.isNotEmpty() || officialSingles.isNotEmpty()) {
                             sendManualPayload(title, thumb, officialSongs, officialAlbums, officialSingles)
                         } else {
                             executeFallbackSearch(title)
@@ -288,11 +297,7 @@ class SoundCoreActivity : ComponentActivity() {
                         executeFallbackSearch(cleanArtistId)
                     }
                 }.onFailure { error ->
-                    if (error.message?.contains("400") == true || error.message?.contains("argument") == true) {
-                        executeFallbackSearch(cleanArtistId)
-                    } else {
-                        triggerHtmlError(error.message)
-                    }
+                    executeFallbackSearch(rawId)
                 }
             }
         }
@@ -335,7 +340,7 @@ class SoundCoreActivity : ComponentActivity() {
                     val fAlbums = albumsSection?.items?.filterIsInstance<AlbumItem>() ?: emptyList()
                     val fSingles = singlesSection?.items?.filterIsInstance<AlbumItem>() ?: emptyList()
                     
-                    if (fSongs.isNotEmpty()) {
+                    if (fSongs.isNotEmpty() || fAlbums.isNotEmpty() || fSingles.isNotEmpty()) {
                         sendManualPayload(trackName, trackPhoto, fSongs, fAlbums, fSingles)
                     } else {
                         executeSongSearchFallback(queryTarget, trackName, trackPhoto)
@@ -374,7 +379,6 @@ class SoundCoreActivity : ComponentActivity() {
             }
             tracksJsonBuilder.append("]")
 
-            // Construcción ultra limpia de Álbumes (SIN coma huérfana al final)
             val albumsJsonBuilder = StringBuilder("[")
             val cleanAlbums = albums.distinctBy { it.title }
             cleanAlbums.forEachIndexed { index, album ->
@@ -388,7 +392,6 @@ class SoundCoreActivity : ComponentActivity() {
             }
             albumsJsonBuilder.append("]")
 
-            // Construcción ultra limpia de Sencillos (SIN coma huérfana al final)
             val singlesJsonBuilder = StringBuilder("[")
             val cleanSingles = singles.distinctBy { it.title }
             cleanSingles.forEachIndexed { index, single ->
@@ -415,7 +418,7 @@ class SoundCoreActivity : ComponentActivity() {
                 val errorMsg = message ?: "Error de sincronización con InnerTube"
                 val safeError = errorMsg.replace("\"", "\\\"").replace("'", "\\'")
                 webView.loadUrl("javascript:onArtistDetailsError('$safeError')")
-            }
+ }
         }
     }
 }
