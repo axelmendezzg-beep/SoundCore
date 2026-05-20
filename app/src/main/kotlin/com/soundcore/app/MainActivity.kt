@@ -16,7 +16,6 @@ import okhttp3.RequestBody.Companion.toRequestBody
 import org.json.JSONObject
 import com.soundcore.app.client.SoundCoreBridge
 import com.soundcore.app.parsers.SearchParser
-import com.soundcore.app.utils.NewPipeExtractor
 import kotlinx.coroutines.*
 
 class MainActivity : AppCompatActivity() {
@@ -38,7 +37,6 @@ class MainActivity : AppCompatActivity() {
         webView = WebView(this)
         setContentView(webView)
         
-        // Inicializar ExoPlayer nativo
         exoPlayer = ExoPlayer.Builder(this).build()
 
         webView.settings.javaScriptEnabled = true
@@ -48,7 +46,7 @@ class MainActivity : AppCompatActivity() {
         val bridge = SoundCoreBridge(
             onSearchTrack = { _, _ -> },
             onPlayTrack = { id, title, artist, thumbnail ->
-                ejecutarStreamConNewPipe(id, title)
+                reproducirAudioNativo(id, title)
             }
         )
         webView.addJavascriptInterface(bridge, "SoundCoreNative")
@@ -74,16 +72,22 @@ class MainActivity : AppCompatActivity() {
         webView.loadUrl("file:///android_asset/index.html")
     }
 
-    private fun ejecutarStreamConNewPipe(id: String, title: String) {
-        logToConsole("Iniciando tunelización y desofuscación para: $title")
+    private fun reproducirAudioNativo(id: String, title: String) {
+        logToConsole("Iniciando tunelización nativa (ANDROID_MUSIC) para: $title")
         CoroutineScope(Dispatchers.IO).launch {
             try {
+                // JSON emulando al cliente oficial de Android Music (Pixel 9 Pro / Android 15)
                 val payload = JSONObject().apply {
                     put("videoId", id)
                     put("context", JSONObject().apply {
                         put("client", JSONObject().apply {
-                            put("clientName", "WEB_REMIX")
-                            put("clientVersion", "1.20260515.01.00")
+                            put("clientName", "ANDROID_MUSIC")
+                            put("clientVersion", "7.27.52")
+                            put("osName", "Android")
+                            put("osVersion", "15")
+                            put("deviceMake", "Google")
+                            put("deviceModel", "Pixel 9 Pro")
+                            put("androidSdkVersion", "35")
                             put("gl", "MX")
                             put("hl", "es-419")
                         })
@@ -99,12 +103,8 @@ class MainActivity : AppCompatActivity() {
                     .url("https://music.youtube.com/youtubei/v1/player?key=AIzaSyAO_JVHe4FpCg5N2X")
                     .post(payload.toString().toRequestBody(JSON_MEDIA))
                     .header("Content-Type", "application/json")
+                    .header("User-Agent", "com.google.android.apps.youtube.music/7.27.52 (Linux; U; Android 15; en_US; Pixel 9 Pro; Build/AP4A.250205.002; Cronet/132.0.6834.79) gzip")
                     .header("X-Goog-Api-Format-Version", "1")
-                    .header("X-YouTube-Client-Name", "67")
-                    .header("X-YouTube-Client-Version", "1.20260515.01.00")
-                    .header("X-Origin", "https://music.youtube.com")
-                    .header("Referer", "https://music.youtube.com")
-                    .header("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36")
                     .build()
 
                 httpClient.newCall(request).execute().use { res ->
@@ -113,43 +113,40 @@ class MainActivity : AppCompatActivity() {
                         val json = JSONObject(body)
                         val adaptiveFormats = json.getJSONObject("streamingData").getJSONArray("adaptiveFormats")
                         
-                        var audioUrl = ""
+                        var streamUrl = ""
                         for (i in 0 until adaptiveFormats.length()) {
                             val format = adaptiveFormats.getJSONObject(i)
+                            // Buscamos el stream que sea puramente audio
                             if (format.getString("mimeType").contains("audio")) {
                                 if (format.has("url")) {
-                                    audioUrl = format.getString("url")
-                                } else if (format.has("signatureCipher")) {
-                                    val cipher = format.getString("signatureCipher")
-                                    audioUrl = NewPipeExtractor.desofuscarEnlaceWeb(id, cipher)
+                                    streamUrl = format.getString("url")
+                                    break
                                 }
-                                break
                             }
                         }
 
-                        if (audioUrl.isNotEmpty() && !audioUrl.startsWith("ERROR_EXTRACTOR")) {
-                            logToConsole("¡Enlace liberado por NewPipe! Cargando ExoPlayer...")
+                        if (streamUrl.isNotEmpty()) {
+                            logToConsole("¡Enlace directo obtenido sin cifrar! Pasando a ExoPlayer...")
                             withContext(Dispatchers.Main) {
-                                // 🛠️ FORZAMOS AL REPRODUCTOR A ARRANCAR CON TODO
-                                exoPlayer?.stop() // Reseteamos por si había algo trabado
+                                exoPlayer?.stop()
                                 exoPlayer?.clearMediaItems()
                                 
-                                val mediaItem = MediaItem.fromUri(audioUrl)
+                                val mediaItem = MediaItem.fromUri(streamUrl)
                                 exoPlayer?.setMediaItem(mediaItem)
-                                exoPlayer?.playWhenReady = true // <-- Fuerza el play automático al cargar
+                                exoPlayer?.playWhenReady = true
                                 exoPlayer?.prepare()
                                 
                                 Toast.makeText(this@MainActivity, "Sonando: $title", Toast.LENGTH_SHORT).show()
                             }
                         } else {
-                            logToConsole("Error crítico: $audioUrl")
+                            logToConsole("Error crítico: YouTube no entregó una URL directa para este dispositivo.")
                         }
                     } else {
-                        logToConsole("Error de Integridad: YouTube rechazó los formatos base.")
+                        logToConsole("Error de Integridad: No se encontraron datos de streaming en la respuesta.")
                     }
                 }
             } catch (e: Exception) {
-                logToConsole("Fallo de red en canal seguro: ${e.message}")
+                logToConsole("Fallo en la conexión nativa: ${e.message}")
             }
         }
     }
