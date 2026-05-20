@@ -2,7 +2,9 @@
     <style name="Theme.Design.NoActionBar" parent="Theme.Material3.DayNight.NoActionBar">
         <item name="android:windowNoTitle">true</item>
         <item name="android:windowActionBar">false</item>
-        <item name="android:windowFullscreen">false</item>
-        <item name="android:windowContentOverlay">@null</item>
+        
+        <item name="android:statusBarColor">#0A0A0A</item>
+        <item name="android:windowLightStatusBar">false</item> <item name="android:navigationBarColor">#0A0A0A</item>
+        <item name="android:windowLightNavigationBar">false</item>
     </style>
 </resources>
