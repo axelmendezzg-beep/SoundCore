@@ -17,7 +17,7 @@ import okhttp3.RequestBody.Companion.toRequestBody
 import org.json.JSONObject
 import java.util.UUID
 
-// Corrutinas
+// Hilos de Corrutinas
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -36,6 +36,7 @@ class MainActivity : AppCompatActivity() {
         webView = WebView(this)
         setContentView(webView)
 
+        // Inicializamos el motor multimedia nativo de Google
         exoPlayer = ExoPlayer.Builder(this).build()
 
         val webSettings: WebSettings = webView.settings
@@ -69,24 +70,26 @@ class MainActivity : AppCompatActivity() {
 
             @android.webkit.JavascriptInterface
             fun playTrack(id: String, title: String, artist: String, thumbnail: String) {
-                Toast.makeText(this@MainActivity, "Inyectando flujo WEB_REMIX... ⚡", Toast.LENGTH_SHORT).show()
+                Toast.makeText(this@MainActivity, "Extrayendo stream nativo... 🎧", Toast.LENGTH_SHORT).show()
 
                 CoroutineScope(Dispatchers.IO).launch {
                     try {
                         val JSON_MEDIA = "application/json; charset=utf-8".toMediaType()
-                        
-                        // Generamos un CPN aleatorio de 16 caracteres estilo ArchiveTune
                         val fakeCpn = UUID.randomUUID().toString().replace("-", "").take(16)
 
+                        // 🎯 TRUCO MAESTRO ARCHIVETUNE + ANDROID INMUNE:
+                        // Usamos el cliente nativo de Android incorporado en TV/VR que no exige poToken/Attestation obligatorio
                         val payload = JSONObject().apply {
                             put("videoId", id)
                             put("context", JSONObject().apply {
                                 put("client", JSONObject().apply {
-                                    put("clientName", "WEB_REMIX")
-                                    put("clientVersion", "1.20260510.01.00")
+                                    put("clientName", "ANDROID_VR")
+                                    put("clientVersion", "1.52.41")
                                     put("hl", "es")
                                     put("gl", "MX")
-                                    put("timeZone", "America/Mexico_City")
+                                })
+                                put("thirdParty", JSONObject().apply {
+                                    put("embedUrl", "https://www.youtube.com/watch?v=$id")
                                 })
                             })
                             put("playbackContext", JSONObject().apply {
@@ -97,79 +100,91 @@ class MainActivity : AppCompatActivity() {
                             })
                         }
 
-                        // Agregamos la clave pública global que usa InnerTube
+                        // Petición directa al Core Endpoint de InnerTube
                         val request = Request.Builder()
-                            .url("https://music.youtube.com/youtubei/v1/player?key=AIzaSyAO_JVHe4FpCg5N2X")
+                            .url("https://www.youtube.com/youtubei/v1/player?key=AIzaSyAO_JVHe4FpCg5N2X")
                             .post(payload.toString().toRequestBody(JSON_MEDIA))
-                            .header("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36")
-                            .header("Origin", "https://music.youtube.com")
-                            .header("Referer", "https://music.youtube.com/")
+                            .header("User-Agent", "Mozilla/5.0 (Android 14; Mobile; rv:124.0) Gecko/124.0 Firefox/124.0")
+                            .header("Content-Type", "application/json")
                             .build()
 
                         httpClient.newCall(request).execute().use { response ->
                             val resBody = response.body?.string() ?: ""
                             val jsonResponse = JSONObject(resBody)
-                            
-                            // Si Google nos rebota por falta de poToken, tiramos excepcion para activar el Plan B
+
                             if (!jsonResponse.has("streamingData")) {
-                                throw Exception("Requiere poToken Attestation")
+                                throw Exception("Bloqueo de firma detectado")
                             }
 
                             val streamingData = jsonResponse.getJSONObject("streamingData")
-                            val adaptiveFormats = streamingData.getJSONArray("adaptiveFormats")
-                            var finalAudioUrl: String? = null
                             
-                            for (i in 0 until adaptiveFormats.length()) {
-                                val format = adaptiveFormats.getJSONObject(i)
-                                val mimeType = format.getString("mimeType")
-                                // Buscamos la pista de audio limpia y verificamos que la URL directa venga libre de firmas pesadas
-                                if (mimeType.contains("audio/") && format.has("url")) {
+                            // Intentamos raspar primero los adaptiveFormats o los formats directos
+                            val formats = if (streamingData.has("adaptiveFormats")) {
+                                streamingData.getJSONArray("adaptiveFormats")
+                            } else {
+                                streamingData.getJSONArray("formats")
+                            }
+
+                            var finalAudioUrl: String? = null
+
+                            // Recorremos los formatos buscando el stream de audio nativo (.mp4/.m4a) que tenga URL directa
+                            for (i in 0 until formats.length()) {
+                                val format = formats.getJSONObject(i)
+                                val mimeType = format.optString("mimeType", "")
+                                
+                                if ((mimeType.contains("audio/") || mimeType.contains("video/mp4")) && format.has("url")) {
                                     finalAudioUrl = format.getString("url")
-                                    break
+                                    // Preferimos los de audio puro si están disponibles
+                                    if (mimeType.contains("audio/")) break
                                 }
                             }
 
                             if (finalAudioUrl != null) {
                                 withContext(Dispatchers.Main) {
+                                    // Inyectamos el flujo multimedia real directo a las bocinas del dispositivo
                                     val mediaItem = MediaItem.fromUri(finalAudioUrl)
                                     exoPlayer?.setMediaItem(mediaItem)
                                     exoPlayer?.prepare()
                                     exoPlayer?.play()
-                                    Toast.makeText(this@MainActivity, "Sonando nativo: $title 😈", Toast.LENGTH_SHORT).show()
+                                    Toast.makeText(this@MainActivity, "Sonando: $title 😈🔥", Toast.LENGTH_SHORT).show()
                                 }
                             } else {
-                                throw Exception("Firma protegida")
+                                throw Exception("Stream protegido por firma pesada")
                             }
                         }
                     } catch (e: Exception) {
-                        // 🚀 PLAN B: Si WEB_REMIX nativo chilla por integridad/tokens,
-                        // extraemos el stream directo usando un espejo open-source de invidious/piped estable
+                        // 🚀 SISTEMA DE RESPALDO CON SERVIDOR SECUNDARIO DE EMERGENCIAS (ENDPOINT REFORMADO)
                         try {
-                            val fallbackUrl = "https://pipedapi.kavin.rocks/streams/$id"
-                            val req = Request.Builder()
-                                .url(fallbackUrl)
-                                .header("User-Agent", "Mozilla/5.0")
-                                .build()
-                                
+                            val backupUrl = "https://inv.tux.digital/api/v1/streams/$id"
+                            val req = Request.Builder().url(backupUrl).header("User-Agent", "Mozilla/5.0").build()
+                            
                             httpClient.newCall(req).execute().use { res ->
                                 val body = JSONObject(res.body?.string() ?: "")
-                                val audioStreams = body.getJSONArray("audioStreams")
-                                if (audioStreams.length() > 0) {
-                                    // El primer stream de audio suele ser un Opus/M4A limpio directo de los servidores de Google sin restricciones
-                                    val fallbackAudio = audioStreams.getJSONObject(0).getString("url")
-                                    
+                                val adaptive = body.getJSONArray("adaptiveFormats")
+                                var fallbackUrl: String? = null
+                                
+                                for (i in 0 until adaptive.length()) {
+                                    val format = adaptive.getJSONObject(i)
+                                    if (format.optString("type", "").contains("audio")) {
+                                        fallbackUrl = format.getString("url")
+                                        break
+                                    }
+                                }
+                                
+                                if (fallbackUrl != null) {
                                     withContext(Dispatchers.Main) {
-                                        val mediaItem = MediaItem.fromUri(fallbackAudio)
-                                        exoPlayer?.setMediaItem(mediaItem)
+                                        exoPlayer?.setMediaItem(MediaItem.fromUri(fallbackUrl))
                                         exoPlayer?.prepare()
                                         exoPlayer?.play()
-                                        Toast.makeText(this@MainActivity, "Sonando (Híbrido): $title 🔥", Toast.LENGTH_SHORT).show()
+                                        Toast.makeText(this@MainActivity, "Sonando (Híbrido Activo) ⚡", Toast.LENGTH_SHORT).show()
                                     }
+                                } else {
+                                    throw Exception()
                                 }
                             }
                         } catch (err: Exception) {
                             withContext(Dispatchers.Main) {
-                                Toast.makeText(this@MainActivity, "Error de red en este track", Toast.LENGTH_SHORT).show()
+                                Toast.makeText(this@MainActivity, "Error de cifrado. Intenta con otra pista.", Toast.LENGTH_LONG).show()
                             }
                         }
                     }
