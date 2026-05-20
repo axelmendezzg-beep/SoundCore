@@ -100,20 +100,26 @@ class MainActivity : AppCompatActivity() {
         logToConsole("Iniciando bypass de reproducción para: $title")
         CoroutineScope(Dispatchers.IO).launch {
             try {
-                // Le pedimos al motor que extraiga los streams reales del video usando su lógica interna
-                val streamResult = YouTube.streams(videoId)
+                // Llamamos a la función player pasándole solo el videoId como pide su firma
+                val streamResult = YouTube.player(videoId)
                 
                 if (streamResult.isSuccess) {
-                    val adaptiveStreams = streamResult.getOrNull()
-                    // Buscamos el primer stream de audio disponible que nos regrese ArchiveTune
-                    val audioStream = adaptiveStreams?.firstOrNull { it.isAudio }
+                    val playerResponse = streamResult.getOrNull()
+                    var streamingUrl: String? = null
                     
-                    if (audioStream != null) {
-                        // Le inyectamos el poToken directamente a la URL de streaming real obtenida
-                        val urlConBypass = YouTube.appendGvsPoToken(audioStream.url)
+                    // Buscamos dentro de los formatos adaptables usando la propiedad nativa isAudio que descubrimos
+                    playerResponse?.streamingData?.adaptiveFormats?.forEach { format ->
+                        if (format.isAudio && !format.url.isNullOrEmpty()) {
+                            streamingUrl = format.url
+                        }
+                    }
+
+                    if (streamingUrl != null) {
+                        // Inyectamos el poToken a la URL real obtenida
+                        val urlConBypass = YouTube.appendGvsPoToken(streamingUrl!!)
 
                         withContext(Dispatchers.Main) {
-                            logToConsole("¡URL Real Obtenida con Bypass! Cargando en ExoPlayer...")
+                            logToConsole("¡URL Dinámica Obtenida con Bypass! Cargando ExoPlayer...")
                             exoPlayer?.stop()
                             exoPlayer?.clearMediaItems()
                             
@@ -126,12 +132,12 @@ class MainActivity : AppCompatActivity() {
                         }
                     } else {
                         withContext(Dispatchers.Main) {
-                            logToConsole("No se encontraron pistas de audio válidas para este video.")
+                            logToConsole("No se encontraron enlaces URL de audio válidos en streamingData.")
                         }
                     }
                 } else {
                     withContext(Dispatchers.Main) {
-                        logToConsole("El motor InnerTube rechazó la extracción del stream: ${streamResult.exceptionOrNull()?.message}")
+                        logToConsole("InnerTube rechazó el PlayerResponse: ${streamResult.exceptionOrNull()?.message}")
                     }
                 }
             } catch (e: Exception) {
