@@ -5,7 +5,7 @@ import android.content.Context
 import android.webkit.*
 
 @SuppressLint("SetJavaScriptEnabled")
-class TokenExtractor(context: Context, private val onResult: (String, String) -> Unit) {
+class TokenExtractor(context: Context, private val onResult: (String) -> Unit) {
     private val webView = WebView(context)
 
     init {
@@ -13,15 +13,7 @@ class TokenExtractor(context: Context, private val onResult: (String, String) ->
         webView.addJavascriptInterface(this, "SoundCoreBridge")
         webView.webViewClient = object : WebViewClient() {
             override fun onPageFinished(view: WebView, url: String) {
-                view.evaluateJavascript("""
-                    (function() {
-                        setTimeout(() => {
-                            const vd = window.ytInitialPlayerResponse?.responseContext?.visitorData || "unknown";
-                            const po = window.ytcfg?.get("INNERTUBE_CONTEXT")?.client?.poToken || "";
-                            window.SoundCoreBridge.postTokens(vd, po);
-                        }, 2000);
-                    })();
-                """.trimIndent(), null)
+                view.evaluateJavascript("window.SoundCoreBridge.postData(window.ytInitialPlayerResponse?.responseContext?.visitorData || '')", null)
             }
         }
     }
@@ -29,5 +21,5 @@ class TokenExtractor(context: Context, private val onResult: (String, String) ->
     fun start() { webView.loadUrl("https://music.youtube.com") }
 
     @JavascriptInterface
-    fun postTokens(vd: String, po: String) { if(po.isNotEmpty()) onResult(vd, po) }
+    fun postData(vd: String) { if(vd.isNotEmpty()) onResult(vd) }
 }

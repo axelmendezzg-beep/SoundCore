@@ -1,125 +1,81 @@
 <!DOCTYPE html>
-<html lang="es">
+<html>
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>SoundCore OS</title>
     <style>
-        body {
-            background-color: #0a0a0a;
-            color: #fff;
-            font-family: system-ui, -apple-system, sans-serif;
-            padding: 20px;
-            margin: 0;
-        }
-        h1 { color: #ff0055; font-size: 2rem; margin-bottom: 5px; text-shadow: 0 0 10px rgba(255, 0, 85, 0.3); }
-        p { color: #555; margin-top: 0; font-size: 0.9rem; }
-        input {
-            width: 100%; padding: 15px; background: #141414; border: 1px solid #222;
-            color: white; border-radius: 8px; box-sizing: border-box; font-size: 1rem;
-            margin-bottom: 15px; outline: none;
-        }
-        input:focus { border-color: #ff0055; }
-        button {
-            width: 100%; padding: 15px; background: #ff0055; border: none;
-            color: white; font-weight: bold; border-radius: 8px; cursor: pointer; font-size: 1rem;
-        }
-        .track-card {
-            display: flex; align-items: center; background: #141414;
-            padding: 12px; margin-top: 10px; border-radius: 8px; border: 1px solid #222;
-            cursor: pointer; transition: background 0.2s;
-        }
-        .track-card:active { background: #222; }
-        .track-card img { width: 50px; height: 50px; border-radius: 6px; margin-right: 12px; object-fit: cover; }
-        .track-info h4 { margin: 0; font-size: 1rem; color: #eee; }
-        .track-info p { margin: 3px 0 0 0; font-size: 0.85rem; color: #888; }
-        .now-playing {
-            position: fixed; bottom: 0; left: 0; right: 0; background: #111;
-            border-top: 1px solid #ff0055; padding: 15px; display: none; align-items: center;
+        body { background: #121212; color: white; font-family: sans-serif; padding: 15px; margin: 0; }
+        input { width: 70%; padding: 10px; background: #222; border: 1px solid #444; color: white; border-radius: 5px; }
+        button { padding: 10px; background: #1DB954; border: none; color: white; font-weight: bold; border-radius: 5px; }
+        #results { margin-top: 15px; margin-bottom: 160px; }
+        .track { padding: 12px; background: #1e1e1e; margin-bottom: 8px; border-radius: 5px; cursor: pointer; }
+        .track:strong { color: #1DB954; }
+        #debug-console { 
+            position: fixed; bottom: 0; left: 0; width: 100%; height: 140px; 
+            background: #000; color: #00ff00; font-family: monospace; 
+            overflow-y: scroll; font-size: 11px; padding: 8px; border-top: 2px solid #333;
+            box-sizing: border-box;
         }
     </style>
 </head>
 <body>
 
-    <h1>SOUNDCORE MOTOR v2</h1>
-    <p>Filtro quirúrgico InnerTube activo 😈</p>
+    <h3>SoundCore Lab 🧪</h3>
+    <input type="text" id="search-input" placeholder="Buscar artista o canción...">
+    <button onclick="lanzarBusqueda()">Buscar</button>
 
-    <input type="text" id="searchBox" placeholder="Busca una rola (Ej. Kanye West)...">
-    <button onclick="dispararBusqueda()">BUSCAR ROLA EN VIVO 🔥</button>
+    <div id="results"></div>
+    <div id="debug-console"><strong>-- Consola de Inicialización --</strong><br></div>
 
-    <div id="resultados" style="margin-top:20px; margin-bottom: 90px;"></div>
+    <script>
+        // Interceptor global de la consola para pintar en pantalla
+        const consoleDiv = document.getElementById('debug-console');
+        console.log = function(msg) {
+            consoleDiv.innerHTML += `> ${msg}<br>`;
+            consoleDiv.scrollTop = consoleDiv.scrollHeight;
+        };
 
-    <div id="playerBar" class="now-playing">
-        <img id="playerCover" src="" style="width:40px; height:40px; border-radius:4px; margin-right:10px;">
-        <div>
-            <h5 id="playerTitle" style="margin:0; color:white; font-size:0.9rem;">Título</h5>
-            <p id="playerArtist" style="margin:2px 0 0 0; color:#888; font-size:0.75dp;">Artista</p>
-        </div>
-        <div style="margin-left:auto; color:#ff0055; font-weight:bold; font-size:0.8rem;">SONANDO ⚡</div>
-    </div>
+        window.onerror = function(message, source, lineno) {
+            console.log(`JS Error Línea ${lineno}: ${message}`);
+        };
 
-<script>
-    const SoundCoreResponse = {
-        handle: function(callbackId, base64Data) {
-            try {
-                const decodedJsonString = atob(base64Data);
-                const tracks = JSON.parse(decodedJsonString);
-                
-                const contenedor = document.getElementById("resultados");
-                contenedor.innerHTML = "";
+        // Disparador de búsqueda usando el puente de búsqueda secundaria
+        function lanzarBusqueda() {
+            const query = document.getElementById('search-input').value;
+            if(!query) return;
+            const callbackId = "cb_" + Date.now();
+            SoundCoreSearchBridge.search(query, callbackId);
+        }
 
-                if (tracks.length === 0) {
-                    contenedor.innerHTML = "<p style='color:#ff0055;'>No se encontraron canciones.</p>";
-                    return;
+        // 🧠 Receptor Maestro de la respuesta Base64 enviado desde Kotlin
+        window.SoundCoreResponse = {
+            handle: function(callbackId, base64Data) {
+                try {
+                    const jsonString = atob(base64Data);
+                    const tracks = JSON.parse(jsonString);
+                    
+                    const resultsDiv = document.getElementById('results');
+                    resultsDiv.innerHTML = '';
+
+                    if(tracks.length === 0) {
+                        resultsDiv.innerHTML = '<p style="color:gray;">No se encontraron resultados</p>';
+                        return;
+                    }
+
+                    tracks.forEach(track => {
+                        const div = document.createElement('div');
+                        div.className = 'track';
+                        // Envía los 4 datos al puente nativo oficial (SoundCoreBridge)
+                        div.onclick = () => SoundCoreNative.playTrack(track.id, track.title, track.artist, track.thumbnail || '');
+                        div.innerHTML = `<strong>${track.title}</strong><br><span style="color:gray; font-size:12px;">${track.artist}</span>`;
+                        resultsDiv.appendChild(div);
+                    });
+                    console.log(`Resultados renderizados: ${tracks.length} tracks.`);
+                } catch(e) {
+                    console.log("Error procesando Base64: " + e.message);
                 }
-
-                tracks.forEach(track => {
-                    const card = document.createElement("div");
-                    card.className = "track-card";
-                    
-                    // ⚡ TRUCO: Escapamos los strings para que no rompan el HTML y le metemos el click funcional
-                    const tTitle = track.title.replace(/'/g, "\\'");
-                    const tArtist = track.artist.replace(/'/g, "\\'");
-                    
-                    card.setAttribute("onclick", `reproducirRola('${track.id}', '${tTitle}', '${tArtist}', '${track.thumbnail}')`);
-                    
-                    card.innerHTML = `
-                        <img src="${track.thumbnail}" alt="cover">
-                        <div class="track-info">
-                            <h4>${track.title}</h4>
-                            <p>${track.artist}</p>
-                        </div>
-                    `;
-                    contenedor.appendChild(card);
-                });
-            } catch (e) {
-                document.getElementById("resultados").innerHTML = "<p style='color:red;'>Error al procesar datos.</p>";
             }
-        }
-    };
-
-    function dispararBusqueda() {
-        const query = document.getElementById("searchBox").value;
-        if (!query) return;
-        document.getElementById("resultados").innerHTML = "<p style='color:#888;'>Buscando en YouTube Music...</p>";
-        if (typeof SoundCoreNative !== 'undefined') {
-            SoundCoreNative.search(query, "REQ_SEARCH_1");
-        }
-    }
-
-    // 🔥 FUNCIÓN TRANSMISORA: Actualiza la interfaz web y despierta las bocinas del celular
-    function reproducirRola(id, title, artist, thumbnail) {
-        // 1. Mostrar barra inferior animada
-        document.getElementById("playerBar").style.display = "flex";
-        document.getElementById("playerCover").src = thumbnail;
-        document.getElementById("playerTitle").innerText = title;
-        document.getElementById("playerArtist").innerText = artist;
-
-        // 2. Mandar la orden directa al procesador nativo de Android
-        if (typeof SoundCoreNative !== 'undefined') {
-            SoundCoreNative.playTrack(id, title, artist, thumbnail);
-        }
-    }
-</script>
+        };
+    </script>
 </body>
 </html>
