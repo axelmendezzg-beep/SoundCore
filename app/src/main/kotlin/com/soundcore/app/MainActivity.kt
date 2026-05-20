@@ -45,7 +45,6 @@ class MainActivity : AppCompatActivity() {
         webView.settings.domStorageEnabled = true
         webView.webViewClient = WebViewClient()
 
-        // Puente nativo para capturar clics de reproducción en la interfaz web
         val bridge = SoundCoreBridge(
             onSearchTrack = { _, _ -> },
             onPlayTrack = { id, title, artist, thumbnail ->
@@ -54,7 +53,6 @@ class MainActivity : AppCompatActivity() {
         )
         webView.addJavascriptInterface(bridge, "SoundCoreNative")
 
-        // Puente nativo para las búsquedas rápidas
         webView.addJavascriptInterface(object {
             @android.webkit.JavascriptInterface
             fun search(query: String, callbackId: String) {
@@ -80,7 +78,6 @@ class MainActivity : AppCompatActivity() {
         logToConsole("Iniciando tunelización y desofuscación para: $title")
         CoroutineScope(Dispatchers.IO).launch {
             try {
-                // Generamos la estructura limpia de WEB_REMIX que descubrimos en el laboratorio
                 val payload = JSONObject().apply {
                     put("videoId", id)
                     put("context", JSONObject().apply {
@@ -120,28 +117,32 @@ class MainActivity : AppCompatActivity() {
                         for (i in 0 until adaptiveFormats.length()) {
                             val format = adaptiveFormats.getJSONObject(i)
                             if (format.getString("mimeType").contains("audio")) {
-                                // 🛠️ LA SOLUCIÓN DEFINITIVA PARA EL ERROR 403:
                                 if (format.has("url")) {
                                     audioUrl = format.getString("url")
                                 } else if (format.has("signatureCipher")) {
                                     val cipher = format.getString("signatureCipher")
-                                    // Mandamos el cipher encriptado a NewPipe para romper el candado matemático
                                     audioUrl = NewPipeExtractor.desofuscarEnlaceWeb(id, cipher)
                                 }
                                 break
                             }
                         }
 
-                        if (audioUrl.isNotEmpty()) {
+                        if (audioUrl.isNotEmpty() && !audioUrl.startsWith("ERROR_EXTRACTOR")) {
                             logToConsole("¡Enlace liberado por NewPipe! Cargando ExoPlayer...")
                             withContext(Dispatchers.Main) {
-                                exoPlayer?.setMediaItem(MediaItem.fromUri(audioUrl))
+                                // 🛠️ FORZAMOS AL REPRODUCTOR A ARRANCAR CON TODO
+                                exoPlayer?.stop() // Reseteamos por si había algo trabado
+                                exoPlayer?.clearMediaItems()
+                                
+                                val mediaItem = MediaItem.fromUri(audioUrl)
+                                exoPlayer?.setMediaItem(mediaItem)
+                                exoPlayer?.playWhenReady = true // <-- Fuerza el play automático al cargar
                                 exoPlayer?.prepare()
-                                exoPlayer?.play()
+                                
                                 Toast.makeText(this@MainActivity, "Sonando: $title", Toast.LENGTH_SHORT).show()
                             }
                         } else {
-                            logToConsole("Error crítico: El desofuscador devolvió un enlace vacío.")
+                            logToConsole("Error crítico: $audioUrl")
                         }
                     } else {
                         logToConsole("Error de Integridad: YouTube rechazó los formatos base.")
