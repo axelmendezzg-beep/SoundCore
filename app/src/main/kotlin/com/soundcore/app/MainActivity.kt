@@ -25,7 +25,6 @@ class MainActivity : AppCompatActivity() {
     private val httpClient = OkHttpClient()
     private val JSON_MEDIA = "application/json; charset=utf-8".toMediaType()
 
-    // 📞 Sistema centralizado de Logs hacia la Consola del HTML
     private fun logToConsole(msg: String) {
         runOnUiThread { 
             val escaped = msg.replace("'", "\\'").replace("\n", " ")
@@ -45,22 +44,15 @@ class MainActivity : AppCompatActivity() {
         webView.settings.domStorageEnabled = true
         webView.webViewClient = WebViewClient()
 
-        // 🌉 INSTANCIA DEL PUENTE REAL: Conectamos los lambdas del Bridge a la lógica de la MainActivity
         val bridge = SoundCoreBridge(
-            onSearchTrack = { callbackId, _ ->
-                // Este bloque se ejecuta cuando SearchParser termina en el Bridge
-                // Para simplificar y no romper tu interfaz, hacemos la búsqueda directa abajo
-            },
+            onSearchTrack = { _, _ -> },
             onPlayTrack = { id, title, artist, thumbnail ->
-                // Recibe los 4 parámetros exactos que pide tu SoundCoreBridge
                 ejecutarStream(id, title)
             }
         )
 
-        // Registramos tu puente real con el nombre que espera tu HTML
         webView.addJavascriptInterface(bridge, "SoundCoreNative")
 
-        // Interceptamos la búsqueda para resolverla aquí directo con tu SearchParser y mandarla al WebView
         webView.addJavascriptInterface(object {
             @android.webkit.JavascriptInterface
             fun search(query: String, callbackId: String) {
@@ -82,36 +74,61 @@ class MainActivity : AppCompatActivity() {
         webView.loadUrl("file:///android_asset/index.html")
     }
 
-    // 🎵 El motor de reproducción blindado con el PoToken de ArchiveTune
     private fun ejecutarStream(id: String, title: String) {
-        logToConsole("Iniciando descifrado para: $title")
+        logToConsole("Iniciando descifrado completo para: $title")
         CoroutineScope(Dispatchers.IO).launch {
             try {
+                // 1. Generar PoToken local con el algoritmo clonado
                 val token = PoTokenGenerator.generateContentToken("ANDROID_MUSIC", id)
-                logToConsole("PoToken generado con éxito")
+                logToConsole("PoToken generado localmente.")
 
+                // 2. Construir el JSON clonando la estructura exacta de PlayerBody.kt
                 val payload = JSONObject().apply {
                     put("videoId", id)
+                    
+                    // Contexto de Cliente Estructurado
                     put("context", JSONObject().apply {
-                        put("client", JSONObject().put("clientName", "ANDROID_MUSIC").put("clientVersion", "7.07.03"))
+                        put("client", JSONObject().apply {
+                            put("clientName", "ANDROID_MUSIC")
+                            put("clientVersion", "7.07.03")
+                            put("gl", "MX")
+                            put("hl", "es-419")
+                        })
                     })
-                    put("serviceIntegrityDimensions", JSONObject().put("poToken", token))
+                    
+                    // PlaybackContext (Firma de timestamp esencial que nos faltaba)
+                    put("playbackContext", JSONObject().apply {
+                        put("contentPlaybackContext", JSONObject().apply {
+                            put("signatureTimestamp", 20190)
+                        })
+                    })
+                    
+                    // Dimensiones de integridad con el PoToken amarrado
+                    put("serviceIntegrityDimensions", JSONObject().apply {
+                        put("poToken", token)
+                    })
                 }
 
+                // 3. Petición HTTP con los headers clonados de InnerTube.kt
                 val request = Request.Builder()
-                    .url("https://www.youtube.com/youtubei/v1/player?key=AIzaSyAO_JVHe4FpCg5N2X")
+                    .url("https://music.youtube.com/youtubei/v1/player?key=AIzaSyAO_JVHe4FpCg5N2X")
                     .post(payload.toString().toRequestBody(JSON_MEDIA))
-                    .header("X-YouTube-Client-Name", "ANDROID_MUSIC")
+                    .header("Content-Type", "application/json")
+                    .header("X-Goog-Api-Format-Version", "1")
+                    .header("X-YouTube-Client-Name", "6") // 6 es la ID interna para ANDROID_MUSIC
                     .header("X-YouTube-Client-Version", "7.07.03")
+                    .header("X-Origin", "https://music.youtube.com")
+                    .header("Referer", "https://music.youtube.com")
+                    .header("User-Agent", "com.google.android.apps.youtube.music/7.07.03 (Linux; U; Android 14; es_MX; Redmi Note 14) Build/UKQ1.230917.001")
                     .build()
 
                 httpClient.newCall(request).execute().use { res ->
                     val body = res.body?.string() ?: ""
                     if (body.contains("streamingData")) {
                         val json = JSONObject(body)
-                        val adaptiveFormats = json.getJSONObject("streamingData").getJSONArray("adaptiveFormats")
+                        val streamingData = json.getJSONObject("streamingData")
+                        val adaptiveFormats = streamingData.getJSONArray("adaptiveFormats")
                         
-                        // Buscamos el primer link de audio estable
                         var audioUrl = ""
                         for (i in 0 until adaptiveFormats.length()) {
                             val format = adaptiveFormats.getJSONObject(i)
@@ -122,7 +139,7 @@ class MainActivity : AppCompatActivity() {
                         }
 
                         if (audioUrl.isNotEmpty()) {
-                            logToConsole("¡StreamingData obtenido! Pasando al ExoPlayer...")
+                            logToConsole("¡ÉXITO SUPREMO! Enlace extraído.")
                             withContext(Dispatchers.Main) {
                                 exoPlayer?.setMediaItem(MediaItem.fromUri(audioUrl))
                                 exoPlayer?.prepare()
@@ -130,14 +147,14 @@ class MainActivity : AppCompatActivity() {
                                 Toast.makeText(this@MainActivity, "Sonando: $title", Toast.LENGTH_SHORT).show()
                             }
                         } else {
-                            logToConsole("Error: No se encontró URL de audio en los formatos")
+                            logToConsole("Error: Formatos mutados sin URL de audio.")
                         }
                     } else {
-                        logToConsole("YouTube denegó el audio. Revisar logs.")
+                        logToConsole("Error del Servidor: Mapeo rechazado. Revisa la firma.")
                     }
                 }
             } catch (e: Exception) {
-                logToConsole("Fallo crítico en playTrack: ${e.message}")
+                logToConsole("Fallo en Hilo de Red: ${e.message}")
             }
         }
     }
