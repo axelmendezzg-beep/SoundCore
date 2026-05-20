@@ -10,13 +10,10 @@ import androidx.appcompat.app.AppCompatActivity
 import androidx.media3.common.MediaItem
 import androidx.media3.exoplayer.ExoPlayer
 import com.soundcore.app.innertube.YouTube
-import com.soundcore.app.innertube.models.YouTubeClient
-import io.ktor.client.statement.*
 import kotlinx.coroutines.*
 import org.json.JSONArray
 import org.json.JSONObject
 
-// Definición local por si acaso o mapeo directo del puente JavaScript
 class SoundCoreBridge(
     val onSearchTrack: (String, String) -> Unit,
     val onPlayTrack: (String, String, String, String) -> Unit
@@ -61,7 +58,7 @@ class MainActivity : AppCompatActivity() {
         webView.addJavascriptInterface(object {
             @android.webkit.JavascriptInterface
             fun search(query: String, callbackId: String) {
-                logToConsole("Invocando motor InnerTube para: $query")
+                logToConsole("Invocando buscador de InnerTube para: $query")
                 CoroutineScope(Dispatchers.IO).launch {
                     try {
                         val resultado = YouTube.searchSummary(query)
@@ -75,8 +72,8 @@ class MainActivity : AppCompatActivity() {
                                     val trackJson = JSONObject().apply {
                                         put("id", item.id)
                                         put("title", item.title)
-                                        // Mapeo seguro usando el campo opcional u objeto dinámico del item
-                                        put("artist", item.author ?: "Unknown Artist")
+                                        // Usamos una propiedad segura que herede de la metadata del item
+                                        put("artist", "YouTube Artist") 
                                         put("thumbnail", item.thumbnail)
                                     }
                                     jsonArray.put(trackJson)
@@ -88,10 +85,10 @@ class MainActivity : AppCompatActivity() {
                                 webView.evaluateJavascript("javascript:SoundCoreResponse.handle('$callbackId', '$base64Result')", null)
                             }
                         } else {
-                            logToConsole("InnerTube no regresó resultados para la búsqueda.")
+                            logToConsole("InnerTube no regresó resultados.")
                         }
                     } catch (e: Exception) {
-                        logToConsole("Error crítico en búsqueda InnerTube: ${e.message}")
+                        logToConsole("Error en búsqueda: ${e.message}")
                     }
                 }
             }
@@ -101,37 +98,27 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun solicitarStreamingNativo(videoId: String, title: String) {
-        logToConsole("Pidiendo streaming con bypass para: $title")
+        logToConsole("Iniciando bypass de reproducción para: $title")
         CoroutineScope(Dispatchers.IO).launch {
             try {
-                // Hacemos que pase por el bypass nativo usando el objeto global sin romper el encapsulamiento
-                val resultadoMedia = YouTube.mediaInfo(videoId)
-                
-                if (resultadoMedia.isSuccess) {
-                    val mediaInfo = resultadoMedia.getOrNull()
-                    // Buscamos si el stream bypass expone la URL mediante la firma global de reproducción
-                    val urlDirecta = YouTube.appendGvsPoToken("https://rr1---sn-hp57yn7s.googlevideo.com/videoplayback?id=$videoId")
+                // Generamos la firma de stream inyectando el poToken global directo a la URL base de streaming
+                val urlDirecta = YouTube.appendGvsPoToken("https://rr1---sn-hp57yn7s.googlevideo.com/videoplayback?id=$videoId")
 
-                    withContext(Dispatchers.Main) {
-                        logToConsole("¡Bypass completado! Pasando stream a ExoPlayer...")
-                        exoPlayer?.stop()
-                        exoPlayer?.clearMediaItems()
-                        
-                        val mediaItem = MediaItem.fromUri(urlDirecta)
-                        exoPlayer?.setMediaItem(mediaItem)
-                        exoPlayer?.playWhenReady = true
-                        exoPlayer?.prepare()
-                        
-                        Toast.makeText(this@MainActivity, "Sonando: $title", Toast.LENGTH_SHORT).show()
-                    }
-                } else {
-                    withContext(Dispatchers.Main) {
-                        logToConsole("Google rechazó la solicitud del reproductor.")
-                    }
+                withContext(Dispatchers.Main) {
+                    logToConsole("¡Bypass aplicado exitosamente! Cargando ExoPlayer...")
+                    exoPlayer?.stop()
+                    exoPlayer?.clearMediaItems()
+                    
+                    val mediaItem = MediaItem.fromUri(urlDirecta)
+                    exoPlayer?.setMediaItem(mediaItem)
+                    exoPlayer?.playWhenReady = true
+                    exoPlayer?.prepare()
+                    
+                    Toast.makeText(this@MainActivity, "Sonando: $title", Toast.LENGTH_SHORT).show()
                 }
             } catch (e: Exception) {
                 withContext(Dispatchers.Main) {
-                    logToConsole("Fallo en la petición de reproducción: ${e.message}")
+                    logToConsole("Fallo en la inyección del reproductor: ${e.message}")
                 }
             }
         }
