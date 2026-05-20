@@ -73,10 +73,11 @@ class MainActivity : AppCompatActivity() {
                 Toast.makeText(this@MainActivity, "Inyectando firmas de integridad...", Toast.LENGTH_SHORT).show()
 
                 CoroutineScope(Dispatchers.IO).launch {
+                    // 🌟 SOLUCIÓN: Definimos el tipo de media aquí arriba para que sea accesible en todo el hilo
+                    val JSON_MEDIA = "application/json; charset=utf-8".toMediaType()
+
                     try {
-                        val JSON_MEDIA = "application/json; charset=utf-8".toMediaType()
                         val fakeCpn = UUID.randomUUID().toString().replace("-", "").take(16)
-                        
                         val simulatedPoToken = PoTokenGenerator.generateContentToken("SoundCorePlayer", id)
 
                         val payload = JSONObject().apply {
@@ -128,7 +129,6 @@ class MainActivity : AppCompatActivity() {
                                 if (mimeType.contains("audio/")) {
                                     val rawUrl = format.getString("url")
                                     
-                                    // Pegamos el parámetro pot exacto al estilo StreamClientUtils
                                     finalAudioUrl = if (rawUrl.contains("?")) {
                                         "$rawUrl&pot=$simulatedPoToken"
                                     } else {
@@ -151,7 +151,7 @@ class MainActivity : AppCompatActivity() {
                             }
                         }
                     } catch (e: Exception) {
-                        // Plan C: Endpoint ultra-limpio usando proxy Cobalt redundante por si las firmas nativas fallan de inicio
+                        // Plan C: Si falla el reproductor nativo, Cobalt entra al quite de forma limpia usando el JSON_MEDIA de arriba
                         try {
                             val proxyUrl = "https://api.cobalt.tools/api/json"
                             val cobaltPayload = JSONObject().apply {
