@@ -71,11 +71,9 @@ class MainActivity : AppCompatActivity() {
             @android.webkit.JavascriptInterface
             fun playTrack(id: String, title: String, artist: String, thumbnail: String) {
                 Toast.makeText(this@MainActivity, "Inyectando firmas de integridad...", Toast.LENGTH_SHORT).show()
+                val JSON_MEDIA = "application/json; charset=utf-8".toMediaType()
 
                 CoroutineScope(Dispatchers.IO).launch {
-                    // 🌟 SOLUCIÓN: Definimos el tipo de media aquí arriba para que sea accesible en todo el hilo
-                    val JSON_MEDIA = "application/json; charset=utf-8".toMediaType()
-
                     try {
                         val fakeCpn = UUID.randomUUID().toString().replace("-", "").take(16)
                         val simulatedPoToken = PoTokenGenerator.generateContentToken("SoundCorePlayer", id)
@@ -128,20 +126,14 @@ class MainActivity : AppCompatActivity() {
                                 val mimeType = format.optString("mimeType", "")
                                 if (mimeType.contains("audio/")) {
                                     val rawUrl = format.getString("url")
-                                    
-                                    finalAudioUrl = if (rawUrl.contains("?")) {
-                                        "$rawUrl&pot=$simulatedPoToken"
-                                    } else {
-                                        "$rawUrl?pot=$simulatedPoToken"
-                                    }
+                                    finalAudioUrl = if (rawUrl.contains("?")) "$rawUrl&pot=$simulatedPoToken" else "$rawUrl?pot=$simulatedPoToken"
                                     break
                                 }
                             }
 
                             if (finalAudioUrl != null) {
                                 withContext(Dispatchers.Main) {
-                                    val mediaItem = MediaItem.fromUri(finalAudioUrl)
-                                    exoPlayer?.setMediaItem(mediaItem)
+                                    exoPlayer?.setMediaItem(MediaItem.fromUri(finalAudioUrl))
                                     exoPlayer?.prepare()
                                     exoPlayer?.play()
                                     Toast.makeText(this@MainActivity, "Sonando nativo: $title 😈🔥", Toast.LENGTH_SHORT).show()
@@ -151,7 +143,6 @@ class MainActivity : AppCompatActivity() {
                             }
                         }
                     } catch (e: Exception) {
-                        // Plan C: Si falla el reproductor nativo, Cobalt entra al quite de forma limpia usando el JSON_MEDIA de arriba
                         try {
                             val proxyUrl = "https://api.cobalt.tools/api/json"
                             val cobaltPayload = JSONObject().apply {
@@ -159,14 +150,12 @@ class MainActivity : AppCompatActivity() {
                                 put("downloadMode", "audio")
                                 put("audioFormat", "mp3")
                             }
-                            
                             val req = Request.Builder()
                                 .url(proxyUrl)
                                 .post(cobaltPayload.toString().toRequestBody(JSON_MEDIA))
                                 .header("Accept", "application/json")
                                 .header("Content-Type", "application/json")
                                 .build()
-                                
                             httpClient.newCall(req).execute().use { res ->
                                 val body = JSONObject(res.body?.string() ?: "")
                                 if (body.getString("status") == "stream" || body.getString("status") == "redirect") {
@@ -177,9 +166,7 @@ class MainActivity : AppCompatActivity() {
                                         exoPlayer?.play()
                                         Toast.makeText(this@MainActivity, "Sonando (Cobalt Engine) 🚀", Toast.LENGTH_SHORT).show()
                                     }
-                                } else {
-                                    throw Exception()
-                                }
+                                } else { throw Exception() }
                             }
                         } catch (err: Exception) {
                             withContext(Dispatchers.Main) {
