@@ -10,9 +10,12 @@ import androidx.appcompat.app.AppCompatActivity
 import androidx.media3.common.MediaItem
 import androidx.media3.exoplayer.ExoPlayer
 import com.soundcore.app.client.SoundCoreBridge
-import com.soundcore.app.parsers.SearchParser
-import com.soundcore.app.utils.SoundCoreExtractor
+import com.soundcore.app.innertube.YouTube
+import com.soundcore.app.innertube.models.YouTubeClient
+import io.ktor.client.call.*
 import kotlinx.coroutines.*
+import org.json.JSONArray
+import org.json.JSONObject
 
 class MainActivity : AppCompatActivity() {
     private lateinit var webView: WebView
@@ -37,27 +40,51 @@ class MainActivity : AppCompatActivity() {
         webView.settings.domStorageEnabled = true
         webView.webViewClient = WebViewClient()
 
+        // Puente para cuando el usuario le da click a reproducir en el HTML
         val bridge = SoundCoreBridge(
             onSearchTrack = { _, _ -> },
             onPlayTrack = { id, title, artist, thumbnail ->
-                procesarFlujoDeAudio(id, title)
+                solicitarStreamingNativo(id, title)
             }
         )
         webView.addJavascriptInterface(bridge, "SoundCoreNative")
 
+        // Puente para la barra de búsqueda del HTML conectado al motor clonado
         webView.addJavascriptInterface(object {
             @android.webkit.JavascriptInterface
             fun search(query: String, callbackId: String) {
-                logToConsole("Buscando pistas para: $query")
+                logToConsole("Invocando motor InnerTube para: $query")
                 CoroutineScope(Dispatchers.IO).launch {
                     try {
-                        val jsonResult = SearchParser().searchTracks(query)
-                        val base64Result = Base64.encodeToString(jsonResult.toByteArray(), Base64.NO_WRAP)
-                        withContext(Dispatchers.Main) {
-                            webView.evaluateJavascript("javascript:SoundCoreResponse.handle('$callbackId', '$base64Result')", null)
+                        // Llamamos al buscador oficial del motor clonado
+                        val resultado = YouTube.searchSummary(query)
+                        
+                        if (resultado.isSuccess) {
+                            val info = resultado.getOrNull()
+                            val jsonArray = JSONArray()
+                            
+                            // Parseamos los resultados devueltos por InnerTube a tu formato JSON estándar
+                            info?.summaries?.forEach { summary ->
+                                summary.items.forEach { item ->
+                                    val trackJson = JSONObject().apply {
+                                        put("id", item.id)
+                                        put("title", item.title)
+                                        put("artist", item.artists.joinToString(", ") { it.name })
+                                        put("thumbnail", item.thumbnail)
+                                    }
+                                    jsonArray.put(trackJson)
+                                }
+                            }
+                            
+                            val base64Result = Base64.encodeToString(jsonArray.toString().toByteArray(), Base64.NO_WRAP)
+                            withContext(Dispatchers.Main) {
+                                webView.evaluateJavascript("javascript:SoundCoreResponse.handle('$callbackId', '$base64Result')", null)
+                            }
+                        } else {
+                            logToConsole("InnerTube no regresó resultados para la búsqueda.")
                         }
                     } catch (e: Exception) {
-                        logToConsole("Error en motor de búsqueda: ${e.message}")
+                        logToConsole("Error crítico en búsqueda InnerTube: ${e.message}")
                     }
                 }
             }
@@ -66,26 +93,57 @@ class MainActivity : AppCompatActivity() {
         webView.loadUrl("file:///android_asset/index.html")
     }
 
-    private fun procesarFlujoDeAudio(id: String, title: String) {
-        logToConsole("Bypasseando integridad de Google para: $title")
+    private fun solicitarStreamingNativo(videoId: String, title: String) {
+        logToConsole("Pidiendo pistas de streaming autenticadas para: $title")
         CoroutineScope(Dispatchers.IO).launch {
-            val urlDirecta = SoundCoreExtractor.extraerStreamNativo(id)
-            
-            withContext(Dispatchers.Main) {
-                if (urlDirecta != null) {
-                    logToConsole("¡Bypass completado con éxito! Cargando ExoPlayer...")
-                    exoPlayer?.stop()
-                    exoPlayer?.clearMediaItems()
-                    
-                    val mediaItem = MediaItem.fromUri(urlDirecta)
-                    exoPlayer?.setMediaItem(mediaItem)
-                    exoPlayer?.playWhenReady = true
-                    exoPlayer?.prepare()
-                    
-                    Toast.makeText(this@MainActivity, "Sonando: $title", Toast.LENGTH_SHORT).show()
-                } else {
-                    logToConsole("Error crítico: El bypass fue rechazado por el servidor de YouTube.")
-                    Toast.makeText(this@MainActivity, "Error de decodificación", Toast.LENGTH_SHORT).show()
+            try {
+                // Aquí llamamos al endpoint "player" de InnerTube que autogenera el poToken de manera interna
+                val responseResult = YouTube.innerTube.player(
+                    client = YouTubeClient.ANDROID_MUSIC,
+                    videoId = videoId,
+                    playlistId = null,
+                    signatureTimestamp = 20580,
+                    poToken = null // Lo dejamos null para que use su generador interno por defecto
+                )
+
+                // Leemos la respuesta cruda del servidor usando el deserializador de Ktor
+                val bodyText = responseResult.bodyAsText()
+                val json = JSONObject(bodyText)
+                var urlDirecta: String? = null
+
+                if (json.has("streamingData")) {
+                    val adaptiveFormats = json.getJSONObject("streamingData").getJSONArray("adaptiveFormats")
+                    for (i in 0 until adaptiveFormats.length()) {
+                        val format = adaptiveFormats.getJSONObject(i)
+                        if (format.getString("mimeType").contains("audio")) {
+                            if (format.has("url")) {
+                                urlDirecta = format.getString("url")
+                                break
+                            }
+                        }
+                    }
+                }
+
+                withContext(Dispatchers.Main) {
+                    if (urlDirecta != null) {
+                        logToConsole("¡Enlace de audio obtenido! Rompiendo seguridad de Google. Reproduciendo...")
+                        exoPlayer?.stop()
+                        exoPlayer?.clearMediaItems()
+                        
+                        val mediaItem = MediaItem.fromUri(urlDirecta)
+                        exoPlayer?.setMediaItem(mediaItem)
+                        exoPlayer?.playWhenReady = true
+                        exoPlayer?.prepare()
+                        
+                        Toast.makeText(this@MainActivity, "Sonando: $title", Toast.LENGTH_SHORT).show()
+                    } else {
+                        logToConsole("Google rechazó el token clonado. Revisar cookies o firmas.")
+                        Toast.makeText(this@MainActivity, "Error de streaming", Toast.LENGTH_SHORT).show()
+                    }
+                }
+            } catch (e: Exception) {
+                withContext(Dispatchers.Main) {
+                    logToConsole("Fallo en la petición de reproducción: ${e.message}")
                 }
             }
         }
