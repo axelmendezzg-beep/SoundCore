@@ -29,11 +29,14 @@ class SoundCoreDownloader : Downloader() {
         reqBuilder.header("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36")
 
         val response = client.newCall(reqBuilder.build()).execute()
+        // Agregamos ?.string() o cadena vacía si el body viene nulo para complacer a Kotlin
+        val bodyString = response.body?.string() ?: ""
+        
         return Response(
             response.code, 
             response.message, 
             response.headers.toMultimap(), 
-            response.body.string(), 
+            bodyString, 
             response.request.url.toString()
         )
     }
