@@ -72,7 +72,6 @@ class MainActivity : AppCompatActivity() {
                                     val trackJson = JSONObject().apply {
                                         put("id", item.id)
                                         put("title", item.title)
-                                        // Usamos una propiedad segura que herede de la metadata del item
                                         put("artist", "YouTube Artist") 
                                         put("thumbnail", item.thumbnail)
                                     }
@@ -101,20 +100,39 @@ class MainActivity : AppCompatActivity() {
         logToConsole("Iniciando bypass de reproducción para: $title")
         CoroutineScope(Dispatchers.IO).launch {
             try {
-                // Generamos la firma de stream inyectando el poToken global directo a la URL base de streaming
-                val urlDirecta = YouTube.appendGvsPoToken("https://rr1---sn-hp57yn7s.googlevideo.com/videoplayback?id=$videoId")
+                // Le pedimos al motor que extraiga los streams reales del video usando su lógica interna
+                val streamResult = YouTube.streams(videoId)
+                
+                if (streamResult.isSuccess) {
+                    val adaptiveStreams = streamResult.getOrNull()
+                    // Buscamos el primer stream de audio disponible que nos regrese ArchiveTune
+                    val audioStream = adaptiveStreams?.firstOrNull { it.isAudio }
+                    
+                    if (audioStream != null) {
+                        // Le inyectamos el poToken directamente a la URL de streaming real obtenida
+                        val urlConBypass = YouTube.appendGvsPoToken(audioStream.url)
 
-                withContext(Dispatchers.Main) {
-                    logToConsole("¡Bypass aplicado exitosamente! Cargando ExoPlayer...")
-                    exoPlayer?.stop()
-                    exoPlayer?.clearMediaItems()
-                    
-                    val mediaItem = MediaItem.fromUri(urlDirecta)
-                    exoPlayer?.setMediaItem(mediaItem)
-                    exoPlayer?.playWhenReady = true
-                    exoPlayer?.prepare()
-                    
-                    Toast.makeText(this@MainActivity, "Sonando: $title", Toast.LENGTH_SHORT).show()
+                        withContext(Dispatchers.Main) {
+                            logToConsole("¡URL Real Obtenida con Bypass! Cargando en ExoPlayer...")
+                            exoPlayer?.stop()
+                            exoPlayer?.clearMediaItems()
+                            
+                            val mediaItem = MediaItem.fromUri(urlConBypass)
+                            exoPlayer?.setMediaItem(mediaItem)
+                            exoPlayer?.playWhenReady = true
+                            exoPlayer?.prepare()
+                            
+                            Toast.makeText(this@MainActivity, "Sonando: $title", Toast.LENGTH_SHORT).show()
+                        }
+                    } else {
+                        withContext(Dispatchers.Main) {
+                            logToConsole("No se encontraron pistas de audio válidas para este video.")
+                        }
+                    }
+                } else {
+                    withContext(Dispatchers.Main) {
+                        logToConsole("El motor InnerTube rechazó la extracción del stream: ${streamResult.exceptionOrNull()?.message}")
+                    }
                 }
             } catch (e: Exception) {
                 withContext(Dispatchers.Main) {
