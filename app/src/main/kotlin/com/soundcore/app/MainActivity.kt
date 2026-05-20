@@ -16,8 +16,8 @@ import okhttp3.RequestBody.Companion.toRequestBody
 import org.json.JSONObject
 import com.soundcore.app.client.SoundCoreBridge
 import com.soundcore.app.parsers.SearchParser
+import com.soundcore.app.utils.NewPipeExtractor
 import kotlinx.coroutines.*
-import java.net.URLDecoder
 
 class MainActivity : AppCompatActivity() {
     private lateinit var webView: WebView
@@ -38,25 +38,27 @@ class MainActivity : AppCompatActivity() {
         webView = WebView(this)
         setContentView(webView)
         
+        // Inicializar ExoPlayer nativo
         exoPlayer = ExoPlayer.Builder(this).build()
 
         webView.settings.javaScriptEnabled = true
         webView.settings.domStorageEnabled = true
         webView.webViewClient = WebViewClient()
 
+        // Puente nativo para capturar clics de reproducción en la interfaz web
         val bridge = SoundCoreBridge(
             onSearchTrack = { _, _ -> },
             onPlayTrack = { id, title, artist, thumbnail ->
-                ejecutarStreamWeb(id, title)
+                ejecutarStreamConNewPipe(id, title)
             }
         )
-
         webView.addJavascriptInterface(bridge, "SoundCoreNative")
 
+        // Puente nativo para las búsquedas rápidas
         webView.addJavascriptInterface(object {
             @android.webkit.JavascriptInterface
             fun search(query: String, callbackId: String) {
-                logToConsole("Buscando en YouTube Music (Web): $query")
+                logToConsole("Buscando pistas para: $query")
                 CoroutineScope(Dispatchers.IO).launch {
                     try {
                         val jsonResult = SearchParser().searchTracks(query)
@@ -65,7 +67,7 @@ class MainActivity : AppCompatActivity() {
                             webView.evaluateJavascript("javascript:SoundCoreResponse.handle('$callbackId', '$base64Result')", null)
                         }
                     } catch (e: Exception) {
-                        logToConsole("Error en búsqueda: ${e.message}")
+                        logToConsole("Error en motor de búsqueda: ${e.message}")
                     }
                 }
             }
@@ -74,11 +76,11 @@ class MainActivity : AppCompatActivity() {
         webView.loadUrl("file:///android_asset/index.html")
     }
 
-    private fun ejecutarStreamWeb(id: String, title: String) {
-        logToConsole("Iniciando tunelización WEB_REMIX para: $title")
+    private fun ejecutarStreamConNewPipe(id: String, title: String) {
+        logToConsole("Iniciando tunelización y desofuscación para: $title")
         CoroutineScope(Dispatchers.IO).launch {
             try {
-                // Payload idéntico al de nuestro script exitoso de Node.js
+                // Generamos la estructura limpia de WEB_REMIX que descubrimos en el laboratorio
                 val payload = JSONObject().apply {
                     put("videoId", id)
                     put("context", JSONObject().apply {
@@ -101,7 +103,7 @@ class MainActivity : AppCompatActivity() {
                     .post(payload.toString().toRequestBody(JSON_MEDIA))
                     .header("Content-Type", "application/json")
                     .header("X-Goog-Api-Format-Version", "1")
-                    .header("X-YouTube-Client-Name", "67") // 67 = WEB_REMIX
+                    .header("X-YouTube-Client-Name", "67")
                     .header("X-YouTube-Client-Version", "1.20260515.01.00")
                     .header("X-Origin", "https://music.youtube.com")
                     .header("Referer", "https://music.youtube.com")
@@ -118,19 +120,20 @@ class MainActivity : AppCompatActivity() {
                         for (i in 0 until adaptiveFormats.length()) {
                             val format = adaptiveFormats.getJSONObject(i)
                             if (format.getString("mimeType").contains("audio")) {
-                                // Soporte para url directa o cipher empaquetado
+                                // 🛠️ LA SOLUCIÓN DEFINITIVA PARA EL ERROR 403:
                                 if (format.has("url")) {
                                     audioUrl = format.getString("url")
                                 } else if (format.has("signatureCipher")) {
                                     val cipher = format.getString("signatureCipher")
-                                    audioUrl = extraerUrlDeCipher(cipher)
+                                    // Mandamos el cipher encriptado a NewPipe para romper el candado matemático
+                                    audioUrl = NewPipeExtractor.desofuscarEnlaceWeb(id, cipher)
                                 }
                                 break
                             }
                         }
 
                         if (audioUrl.isNotEmpty()) {
-                            logToConsole("¡Enlace obtenido con éxito! Transmitiendo al ExoPlayer...")
+                            logToConsole("¡Enlace liberado por NewPipe! Cargando ExoPlayer...")
                             withContext(Dispatchers.Main) {
                                 exoPlayer?.setMediaItem(MediaItem.fromUri(audioUrl))
                                 exoPlayer?.prepare()
@@ -138,29 +141,16 @@ class MainActivity : AppCompatActivity() {
                                 Toast.makeText(this@MainActivity, "Sonando: $title", Toast.LENGTH_SHORT).show()
                             }
                         } else {
-                            logToConsole("Error: No se pudo extraer la URL del stream de audio.")
+                            logToConsole("Error crítico: El desofuscador devolvió un enlace vacío.")
                         }
                     } else {
-                        logToConsole("Error: YouTube rechazó los formatos web.")
+                        logToConsole("Error de Integridad: YouTube rechazó los formatos base.")
                     }
                 }
             } catch (e: Exception) {
-                logToConsole("Fallo en red: ${e.message}")
+                logToConsole("Fallo de red en canal seguro: ${e.message}")
             }
         }
-    }
-
-    // Extractor rápido de url cuando viene ofuscada en el cipher web
-    private fun extraerUrlDeCipher(cipher: String): String {
-        val params = cipher.split("&")
-        var url = ""
-        for (p in params) {
-            if (p.startsWith("url=")) {
-                url = URLDecoder.decode(p.substring(4), "UTF-8")
-                break
-            }
-        }
-        return url
     }
 
     override fun onDestroy() {
