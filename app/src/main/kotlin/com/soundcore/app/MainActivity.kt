@@ -5,12 +5,17 @@ import android.os.Bundle
 import android.webkit.WebSettings
 import android.webkit.WebView
 import android.webkit.WebViewClient
-import androidx.appcompat.app.AppCompatActivity
-import com.soundcore.app.client.SoundCoreBridge
 import android.util.Base64
 import android.widget.Toast
+import androidx.appcompat.app.AppCompatActivity
 import androidx.media3.common.MediaItem
 import androidx.media3.exoplayer.ExoPlayer
+
+// 🔥 IMPORTS CRÍTICOS PARA CORRUTINAS 🔥
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 class MainActivity : AppCompatActivity() {
 
@@ -41,32 +46,17 @@ class MainActivity : AppCompatActivity() {
             }
         }
 
-        // Configuramos el puente con sus dos acciones: buscar y reproducir
         val searchParser = com.soundcore.app.parsers.SearchParser()
-        
-        val bridge = SoundCoreBridge(
-            onSearchTrack = { _, _ -> }, // No usado directamente en esta firma simplificada
-            onPlayTrack = { id, title, artist, thumbnail ->
-                // 🎯 REPRODUCCIÓN EN ACCIÓN:
-                // El truco maestro: Le pegamos al servidor de piped/googlevideo o stream directo usando el videoId
-                // Para la prueba rápida de audio, cargamos el truco de stream directo open-source:
-                val streamUrl = "https://pipedapi.kavin.rocks/v2/streams/$id" 
-                
-                Toast.makeText(this, "Reproduciendo: $title", Toast.LENGTH_SHORT).show()
-                
-                // Le inyectamos la pista a ExoPlayer
-                // Nota: En el siguiente paso usaremos un parseador de audio real, ahorita jalamos el link directo para probar transiciones
-                // Para asegurar que suene, usaremos una url de test de audio directo o el puente completo de stream de yt en el prox paso
-            }
-        )
 
-        // Sobreescribimos el puente de forma limpia para que use la lógica exacta que ya tenías de búsqueda
+        // 🚀 PUENTE NATIVO REFORMADO Y SEGURO
         webView.addJavascriptInterface(object {
+            
             @android.webkit.JavascriptInterface
             fun search(query: String, callbackId: String) {
-                kotlinx.coroutines.CoroutineScope(kotlinx.coroutines.Dispatchers.IO).launch {
+                // Abrimos el contenedor global (MainScope o IO según toque) usando el Scope explícito
+                CoroutineScope(Dispatchers.IO).launch {
                     val jsonResult = searchParser.searchTracks(query)
-                    kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
+                    withContext(Dispatchers.Main) {
                         val base64Result = Base64.encodeToString(jsonResult.toByteArray(), Base64.NO_WRAP)
                         webView.evaluateJavascript("javascript:SoundCoreResponse.handle('$callbackId', '$base64Result')", null)
                     }
@@ -75,12 +65,11 @@ class MainActivity : AppCompatActivity() {
 
             @android.webkit.JavascriptInterface
             fun playTrack(id: String, title: String, artist: String, thumbnail: String) {
-                kotlinx.coroutines.CoroutineScope(kotlinx.coroutines.Dispatchers.Main).launch {
-                    // Aquí mandamos el stream. Para la v2 limpia usaremos el extractor de firmas de audio.
+                CoroutineScope(Dispatchers.Main).launch {
                     Toast.makeText(this@MainActivity, "Cargando audio: $title 😈", Toast.LENGTH_LONG).show()
                     
-                    // Inyectamos el stream directo simulado usando el servidor de audio de yt stream
-                    val mediaItem = MediaItem.fromUri("https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3") // Audio de prueba para verificar bocinas
+                    // 🎵 Stream de prueba directo a las bocinas del celular
+                    val mediaItem = MediaItem.fromUri("https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3")
                     exoPlayer?.setMediaItem(mediaItem)
                     exoPlayer?.prepare()
                     exoPlayer?.play()
