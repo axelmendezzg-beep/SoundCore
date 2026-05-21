@@ -19,54 +19,58 @@ class MainActivity : Activity() {
         val tvResult = findViewById<TextView>(R.id.tvResult)
 
         btnSolve.setOnClickListener {
-            val url = etUrl.text.toString()
-            tvResult.text = "🧠 Cargando Trilogía Criptográfica (Astring + Meriyah + Core)..."
+            tvResult.text = "🧠 Detonando jsc() con retos criptográficos en la RAM..."
 
             thread {
                 try {
-                    // 1. Cargamos Astring (El reconstructor)
+                    // 1. Cargar la trilogía de los assets
                     val astringCode = assets.open("astring.js").bufferedReader().use { it.readText() }
-                    
-                    // 2. Cargamos Meriyah (El desarmador)
                     val meriyahCode = assets.open("meriyah.js").bufferedReader().use { it.readText() }
-                    
-                    // 3. Cargamos el núcleo de yt-dlp
                     val coreJsCode = assets.open("yt.solver.core.js").bufferedReader().use { it.readText() }
                     
                     val inicio = System.currentTimeMillis()
                     
                     QuickJs.create().use { quickJs ->
-                        // Inyectamos las dependencias globales en orden
+                        // 2. Inyectar todo el entorno en la RAM
                         quickJs.evaluate(astringCode)
                         quickJs.evaluate(meriyahCode)
                         quickJs.evaluate(coreJsCode)
                         
-                        // Extraemos el ID del video
-                        val videoId = url.substringAfter("v=").substringBefore("&")
-                        
+                        // 3. Clonamos el formato exacto que usa yt-dlp en Python
+                        // Le pasamos un reto tipo 'n' de prueba para ver el descifrado del límite de velocidad
                         val payloadScript = """
                             (function() {
-                                if (typeof sign === 'function') {
-                                    return JSON.stringify({ status: "success", result: sign("$videoId") });
+                                var mockData = {
+                                    "type": "player",
+                                    "player": "function(a){a=a.split('');var b=a.reverse();return b.join('')}", // Un player simulado limpio
+                                    "requests": [
+                                        { "type": "n", "challenges": ["N_RETO_DE_PRUEBA_A"] },
+                                        { "type": "sig", "challenges": ["SIG_RETO_DE_PRUEBA_B"] }
+                                    ],
+                                    "output_preprocessed": true
+                                };
+                                
+                                // Ejecutamos la función jsc que descubrimos en el head/tail
+                                if (typeof jsc === 'function') {
+                                    var response = jsc(mockData);
+                                    return JSON.stringify(response, null, 2);
                                 } else {
-                                    return JSON.stringify({ 
-                                        status: "ready", 
-                                        message: "Ecosistema completo. Astring y Meriyah operativos en la RAM de Android." 
-                                    });
+                                    return JSON.stringify({ error: "La función global jsc no se inicializó correctamente." });
                                 }
                             })();
                         """.trimIndent()
                         
-                        val resultadoJs = quickJs.evaluate(payloadScript) as String
+                        // 4. Corremos el descifrador
+                        val resultadoString = quickJs.evaluate(payloadScript) as String
                         val tiempoTotal = System.currentTimeMillis() - inicio
 
                         runOnUiThread {
-                            tvResult.text = "✅ TRILOGÍA CARGADA EN RAM ($tiempoTotal ms)\n\nResultado:\n$resultadoJs"
+                            tvResult.text = "⚡ FUSILADO COMPLETO EN $tiempoTotal ms\n\nRespuesta de InnerTube Solver:\n$resultadoString"
                         }
                     }
                 } catch (e: Exception) {
                     runOnUiThread {
-                        tvResult.text = "❌ ERROR CRÍTICO:\n${e.message}"
+                        tvResult.text = "❌ ERROR AL DETONAR ESCUDO:\n${e.message}"
                     }
                 }
             }
