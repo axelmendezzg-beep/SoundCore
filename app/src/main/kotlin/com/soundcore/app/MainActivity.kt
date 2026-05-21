@@ -101,14 +101,13 @@ class MainActivity : AppCompatActivity() {
         logToConsole("Iniciando bypass de reproducción para: $title")
         CoroutineScope(Dispatchers.IO).launch {
             try {
-                // Pasamos explícitamente el enum del cliente que requiere el método player de ArchiveTune
-                val streamResult = YouTube.player(YouTubeClient.ANDROID_MUSIC, videoId)
+                // CORRECCIÓN: Primero va el videoId (String) y luego el YouTubeClient
+                val streamResult = YouTube.player(videoId, YouTubeClient.ANDROID_MUSIC)
                 
                 if (streamResult.isSuccess) {
                     val playerResponse = streamResult.getOrNull()
                     var streamingUrl: String? = null
                     
-                    // Buscamos dentro de los formatos adaptables usando la propiedad nativa isAudio
                     playerResponse?.streamingData?.adaptiveFormats?.forEach { format ->
                         if (format.isAudio && !format.url.isNullOrEmpty()) {
                             streamingUrl = format.url
@@ -116,7 +115,6 @@ class MainActivity : AppCompatActivity() {
                     }
 
                     if (streamingUrl != null) {
-                        // Inyectamos el poToken a la URL real obtenida
                         val urlConBypass = YouTube.appendGvsPoToken(streamingUrl!!)
 
                         withContext(Dispatchers.Main) {
