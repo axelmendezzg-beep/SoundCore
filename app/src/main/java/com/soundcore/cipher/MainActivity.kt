@@ -20,31 +20,39 @@ class MainActivity : Activity() {
 
         btnSolve.setOnClickListener {
             val url = etUrl.text.toString()
-            tvResult.text = "🧠 Ejecutando algoritmo matemático en la RAM..."
+            tvResult.text = "🧠 Cargando motores criptográficos (Meriyah + Core)..."
 
-            // Corremos la inyección en un hilo separado para no trabar la interfaz
             thread {
                 try {
-                    // 1. Cargamos el JS desde los assets
-                    val jsCode = assets.open("yt.solver.core.js").bufferedReader().use { it.readText() }
+                    // 1. Cargamos Meriyah (el parseador) de los assets
+                    val meriyahCode = assets.open("meriyah.js").bufferedReader().use { it.readText() }
+                    
+                    // 2. Cargamos el resolvedor de yt-dlp
+                    val coreJsCode = assets.open("yt.solver.core.js").bufferedReader().use { it.readText() }
                     
                     val inicio = System.currentTimeMillis()
                     
-                    // 2. Ejecutamos el descifrador nativo
                     QuickJs.create().use { quickJs ->
-                        quickJs.evaluate(jsCode)
+                        // Inyectamos PRIMERO a Meriyah para que esté disponible globalmente
+                        quickJs.evaluate(meriyahCode)
                         
-                        // Extraemos el ID del video del link
+                        // Inyectamos SEGUNDO el núcleo del descifrador
+                        quickJs.evaluate(coreJsCode)
+                        
+                        // Extraemos el ID del video del enlace
                         val videoId = url.substringAfter("v=").substringBefore("&")
                         
-                        // Simulamos la inyección del stdin que hace yt-dlp
+                        // Script ejecutor de prueba
                         val payloadScript = """
-                            (val() {
-                                // Llamada de prueba al núcleo del core.js
+                            (function() {
+                                // Buscamos las funciones globales del solver
                                 if (typeof sign === 'function') {
                                     return JSON.stringify({ status: "success", result: sign("$videoId") });
                                 } else {
-                                    return JSON.stringify({ status: "error", message: "Función sign no encontrada en core.js" });
+                                    return JSON.stringify({ 
+                                        status: "loaded", 
+                                        message: "Motores en línea. Meriyah activo. Buscando detonador del reto..." 
+                                    });
                                 }
                             })();
                         """.trimIndent()
@@ -53,7 +61,7 @@ class MainActivity : Activity() {
                         val tiempoTotal = System.currentTimeMillis() - inicio
 
                         runOnUiThread {
-                            tvResult.text = "✅ RESUELTO EN $tiempoTotal ms\n\nResultado:\n$resultadoJs"
+                            tvResult.text = "✅ AMBOS MOTORES EN LÍNEA ($tiempoTotal ms)\n\nResultado:\n$resultadoJs"
                         }
                     }
                 } catch (e: Exception) {
