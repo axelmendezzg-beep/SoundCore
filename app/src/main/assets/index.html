@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SoundCore InnerTube Core Debugger 😈</title>
+    <style>
+        body {
+            background-color: #121212;
+            color: #ffffff;
+            font-family: 'Courier New', Courier, monospace;
+            padding: 20px;
+            margin: 0;
+        }
+        h1 {
+            color: #FF0055;
+            text-align: center;
+        }
+        .box {
+            background-color: #1e1e1e;
+            border: 1px solid #FF0055;
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+        }
+        input, button {
+            width: 100%;
+            padding: 12px;
+            margin: 8px 0;
+            border-radius: 4px;
+            border: none;
+            box-sizing: border-box;
+        }
+        input {
+            background-color: #2a2a2a;
+            color: #00FFCC;
+            border-bottom: 2px solid #FF0055;
+        }
+        button {
+            background-color: #FF0055;
+            color: white;
+            font-weight: bold;
+            cursor: pointer;
+        }
+        button:hover {
+            background-color: #ff3377;
+        }
+        #output {
+            background-color: #000000;
+            color: #00FFCC;
+            padding: 15px;
+            border-radius: 4px;
+            white-space: pre-wrap;
+            font-size: 13px;
+            max-height: 300px;
+            overflow-y: auto;
+        }
+    </style>
+    <script src="yt.solver.core.js"></script>
+</head>
+<body>
+
+    <h1>SoundCore Laboratory 🧪</h1>
+    
+    <div class="box">
+        <label for="videoLink">Enlace de YouTube Music:</label>
+        <input type="text" id="videoLink" value="https://music.youtube.com/watch?v=R5cbxTPZNL0">
+        
+        <button id="btnDecrypt">PROBAR DESCIFRADO (SIGN) 🚀</button>
+    </div>
+
+    <div class="box">
+        <h3>Salida del Motor Criptográfico:</h3>
+        <div id="output">Esperando ejecución...</div>
+    </div>
+
+    <script>
+        document.getElementById('btnDecrypt').addEventListener('click', function() {
+            const url = document.getElementById('videoLink').value;
+            const output = document.getElementById('output');
+            
+            output.innerText = "🧠 Analizando funciones de yt.solver.core.js en el navegador...";
+            
+            try {
+                // Extraemos el ID del video
+                let videoId = url.split('v=')[1];
+                if (videoId) {
+                    videoId = videoId.split('&')[0];
+                } else {
+                    videoId = "R5cbxTPZNL0"; // Fallback por defecto
+                }
+
+                const inicio = performance.now();
+                
+                // Buscamos si la función global existe en el core.js cargado
+                if (typeof sign === 'function') {
+                    const tokenPrueba = sign(videoId);
+                    const fin = performance.now();
+                    
+                    output.innerHTML = `✅ <b>ÉXITO EN ${(fin - inicio).toFixed(2)} ms</b>\n\n` +
+                                       `<b>Video ID procesado:</b> ${videoId}\n\n` +
+                                       `<b>Resultado de la Firma:</b>\n${tokenPrueba}`;
+                } else {
+                    output.innerHTML = `⚠️ <b>Core cargado correctamente</b>, pero el script requiere una estructura de inicialización específica (Input/Output Challenges) para detonar las funciones globales del solver.`;
+                }
+            } catch (e) {
+                output.innerText = "❌ ERROR EN LA EJECUCIÓN: " + e.message;
+            }
+        });
+    </script>
+</body>
+</html>
