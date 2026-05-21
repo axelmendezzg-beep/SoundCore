@@ -2,7 +2,7 @@ name: Android CI (Compilador Automático SoundCore)
 
 on:
   push:
-    branches: [ "main", "master" ]
+    branches: [ "main", "master" ] # Escucha a ambas ramas por si las dudas
   pull_request:
     branches: [ "main", "master" ]
 
@@ -19,15 +19,14 @@ jobs:
       with:
         java-version: '17'
         distribution: 'temurin'
-        cache: gradle
 
-    - name: Dar permisos de ejecución a Gradle
-      run: chmod +x gradlew
-      continue-on-error: true
+    - name: Configurar Gradle Automático 🚀
+      uses: gradle/actions/setup-gradle@v3
+      with:
+        gradle-version: 8.2
 
     - name: Compilar APK con Gradle
-      run: ./gradlew assembleDebug
-      continue-on-error: true
+      run: gradle assembleDebug
 
     - name: Subir APK Compilado como Artefacto
       uses: actions/upload-artifact@v4
