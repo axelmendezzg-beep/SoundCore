@@ -10,6 +10,7 @@ import androidx.appcompat.app.AppCompatActivity
 import androidx.media3.common.MediaItem
 import androidx.media3.exoplayer.ExoPlayer
 import com.soundcore.app.innertube.YouTube
+import com.soundcore.app.innertube.models.YouTubeClient
 import kotlinx.coroutines.*
 import org.json.JSONArray
 import org.json.JSONObject
@@ -100,14 +101,14 @@ class MainActivity : AppCompatActivity() {
         logToConsole("Iniciando bypass de reproducción para: $title")
         CoroutineScope(Dispatchers.IO).launch {
             try {
-                // Llamamos a la función player pasándole solo el videoId como pide su firma
-                val streamResult = YouTube.player(videoId)
+                // Pasamos explícitamente el enum del cliente que requiere el método player de ArchiveTune
+                val streamResult = YouTube.player(YouTubeClient.ANDROID_MUSIC, videoId)
                 
                 if (streamResult.isSuccess) {
                     val playerResponse = streamResult.getOrNull()
                     var streamingUrl: String? = null
                     
-                    // Buscamos dentro de los formatos adaptables usando la propiedad nativa isAudio que descubrimos
+                    // Buscamos dentro de los formatos adaptables usando la propiedad nativa isAudio
                     playerResponse?.streamingData?.adaptiveFormats?.forEach { format ->
                         if (format.isAudio && !format.url.isNullOrEmpty()) {
                             streamingUrl = format.url
