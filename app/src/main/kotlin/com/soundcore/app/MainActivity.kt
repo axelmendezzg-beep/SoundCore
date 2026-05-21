@@ -101,8 +101,8 @@ class MainActivity : AppCompatActivity() {
         logToConsole("Iniciando bypass de reproducción para: $title")
         CoroutineScope(Dispatchers.IO).launch {
             try {
-                // CORRECCIÓN: Primero va el videoId (String) y luego el YouTubeClient
-                val streamResult = YouTube.player(videoId, YouTubeClient.ANDROID_MUSIC)
+                // CORRECCIÓN CON PARÁMETROS NOMBRADOS: Saltamos playlistId limpiamente
+                val streamResult = YouTube.player(videoId = videoId, client = YouTubeClient.ANDROID_MUSIC)
                 
                 if (streamResult.isSuccess) {
                     val playerResponse = streamResult.getOrNull()
